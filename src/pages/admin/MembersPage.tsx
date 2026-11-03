@@ -247,7 +247,7 @@ export function MembersPage() {
                 <td className="tabular-nums">{formatLeaveDays(member.summer)}</td>
                 <td className="tabular-nums">{formatLeaveDays(member.annual + member.comp + member.summer)}</td>
                 <td>
-                  <button type="button" className="inline-grid h-7 w-7 place-items-center text-accent" aria-label="수정" onClick={() => setSelected(member.id)}>
+                  <button type="button" className="ds-icon-button is-sm" aria-label="수정" onClick={() => setSelected(member.id)}>
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                       <path d="M15.2 3.8a2.1 2.1 0 0 1 3 3L8.2 16.8 4.5 17.5l.7-3.7Z" />
                       <path d="M13.4 5.6l3 3" />

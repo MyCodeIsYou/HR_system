@@ -1,61 +1,67 @@
+import { useState } from "react"
 import { NavLink, Outlet } from "react-router-dom"
 import { useAuth } from "../auth/AuthContext.tsx"
+import { LogoutButton } from "./LogoutButton.tsx"
 
 const item = "ds-nav"
 const active = "is-active"
 
+const links = [
+  { to: "/", label: "내 근태", end: true, admin: false },
+  { to: "/admin/workplaces", label: "사업장", admin: true },
+  { to: "/admin/members", label: "구성원", admin: true },
+  { to: "/admin/attendance", label: "출퇴근", admin: true },
+  { to: "/admin/penalties", label: "지각", admin: true },
+  { to: "/admin/annual-leave", label: "연차", admin: true },
+  { to: "/admin/leaves", label: "휴가", admin: true },
+  { to: "/admin/comp-leave", label: "보상휴가", admin: true },
+]
+
 export function Layout() {
-  const { profile, organization, signOut } = useAuth()
+  const { profile, organization } = useAuth()
   const admin = profile?.role === "admin"
+  const [open, setOpen] = useState(false)
+  const menu = links.filter((link) => !link.admin || admin)
 
   return (
-    <div className="min-h-svh">
-      <header className="ds-header">
-        <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center gap-3 px-4 py-3 sm:px-6">
-          <div className="mr-auto">
-            <p className="text-xs tracking-[0.16em] text-accent">근태</p>
-            <p className="text-sm font-medium">{organization?.name ?? "조직"}</p>
-          </div>
-          <p className="text-sm text-muted">
+    <div className="ds-shell">
+      {open ? <button type="button" className="ds-sidebar-backdrop" aria-label="메뉴 닫기" onClick={() => setOpen(false)} /> : null}
+      <aside className={open ? "ds-sidebar is-open" : "ds-sidebar"}>
+        <div>
+          <p className="text-xs tracking-[0.16em] text-accent">근태</p>
+          <p className="mt-1 text-sm font-medium">{organization?.name ?? "조직"}</p>
+        </div>
+        <nav>
+          {menu.map((link) => (
+            <NavLink
+              key={link.to}
+              to={link.to}
+              end={link.end}
+              className={({ isActive }) => (isActive ? `${item} ${active}` : item)}
+              onClick={() => setOpen(false)}
+            >
+              {link.label}
+            </NavLink>
+          ))}
+        </nav>
+        <div className="ds-side-user">
+          <p className="min-w-0 truncate text-sm text-muted">
             {profile?.name}
             {admin ? " · 관리자" : ""}
           </p>
-          <button type="button" className="text-sm text-muted underline-offset-4 hover:underline" onClick={() => void signOut()}>
-            로그아웃
-          </button>
+          <LogoutButton />
         </div>
-        <nav className="mx-auto flex w-full max-w-5xl gap-1 overflow-x-auto px-4 pb-3 sm:px-6">
-          <NavLink to="/" end className={({ isActive }) => (isActive ? `${item} ${active}` : item)}>
-            내 근태
-          </NavLink>
-          {admin ? (
-            <>
-              <NavLink to="/admin/workplaces" className={({ isActive }) => (isActive ? `${item} ${active}` : item)}>
-                사업장
-              </NavLink>
-              <NavLink to="/admin/members" className={({ isActive }) => (isActive ? `${item} ${active}` : item)}>
-                구성원
-              </NavLink>
-              <NavLink to="/admin/attendance" className={({ isActive }) => (isActive ? `${item} ${active}` : item)}>
-                출퇴근
-              </NavLink>
-              <NavLink to="/admin/penalties" className={({ isActive }) => (isActive ? `${item} ${active}` : item)}>
-                지각
-              </NavLink>
-              <NavLink to="/admin/annual-leave" className={({ isActive }) => (isActive ? `${item} ${active}` : item)}>
-                연차
-              </NavLink>
-              <NavLink to="/admin/leaves" className={({ isActive }) => (isActive ? `${item} ${active}` : item)}>
-                휴가
-              </NavLink>
-              <NavLink to="/admin/comp-leave" className={({ isActive }) => (isActive ? `${item} ${active}` : item)}>
-                보상휴가
-              </NavLink>
-            </>
-          ) : null}
-        </nav>
-      </header>
-      <Outlet />
+      </aside>
+      <div className="min-w-0">
+        <button type="button" className="ds-menu-toggle ds-icon-button" aria-label="메뉴" onClick={() => setOpen(true)}>
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+            <path d="M5 7h14" />
+            <path d="M5 12h14" />
+            <path d="M5 17h14" />
+          </svg>
+        </button>
+        <Outlet />
+      </div>
     </div>
   )
 }

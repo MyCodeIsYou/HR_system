@@ -60,7 +60,7 @@ export function HomePage() {
     <Page title="내 근태" description="오늘 출퇴근, 연차, 보상휴가, 여름휴가, 남은 휴가입니다.">
       {error ? <p className="mb-4 text-sm text-danger">{error}</p> : null}
       <div className="grid max-w-3xl grid-cols-3 gap-2 sm:grid-cols-5">
-        <div className="ds-card px-3 py-2">
+        <div className="ds-card ds-tone-teal px-3 py-2">
           <p className="text-xs text-muted">오늘</p>
           <p className="mt-1 text-sm font-semibold">
             {latest && !latest.voided_at && latest.event_type === "in" && latest.work_date === today
@@ -70,19 +70,19 @@ export function HomePage() {
                 : "출근 전"}
           </p>
         </div>
-        <div className="ds-card px-3 py-2">
+        <div className="ds-card ds-tone-orange px-3 py-2">
           <p className="text-xs text-muted">연차</p>
           <p className="mt-1 text-sm font-semibold tabular-nums">{formatLeaveDays(balance(balances, "annual"))}</p>
         </div>
-        <div className="ds-card px-3 py-2">
+        <div className="ds-card ds-tone-violet px-3 py-2">
           <p className="text-xs text-muted">보상휴가</p>
           <p className="mt-1 text-sm font-semibold tabular-nums">{formatLeaveDays(balance(balances, "comp"))}</p>
         </div>
-        <div className="ds-card px-3 py-2">
+        <div className="ds-card ds-tone-lime px-3 py-2">
           <p className="text-xs text-muted">여름휴가</p>
           <p className="mt-1 text-sm font-semibold tabular-nums">{formatLeaveDays(balance(balances, "summer"))}</p>
         </div>
-        <div className="ds-card px-3 py-2">
+        <div className="ds-card ds-tone-coral px-3 py-2">
           <p className="text-xs text-muted">남은 휴가</p>
           <p className="mt-1 text-sm font-semibold tabular-nums">
             {formatLeaveDays(balance(balances, "annual") + balance(balances, "comp") + balance(balances, "summer"))}

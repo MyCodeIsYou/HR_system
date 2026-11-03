@@ -1,12 +1,13 @@
 import { useEffect, useState, type FormEvent } from "react"
 import { Navigate } from "react-router-dom"
 import { useAuth } from "../auth/AuthContext.tsx"
+import { LogoutButton } from "../components/LogoutButton.tsx"
 import { Alert, Button, Card, Field, FullScreen } from "../components/ui.tsx"
 import { bootstrapOrganization, organizationExists } from "../lib/api.ts"
 import { humanError } from "../lib/format.ts"
 
 export function SetupPage() {
-  const { configured, ready, session, profile, refresh, signOut } = useAuth()
+  const { configured, ready, session, profile, refresh } = useAuth()
   const [exists, setExists] = useState<boolean | null>(null)
   const [name, setName] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -72,9 +73,9 @@ export function SetupPage() {
           </div>
         ) : null}
         {exists !== false && error ? <div className="mt-4"><Alert>{error}</Alert></div> : null}
-        <button type="button" className="mt-6 text-sm text-muted underline-offset-4 hover:underline" onClick={() => void signOut()}>
-          로그아웃
-        </button>
+        <div className="mt-6">
+          <LogoutButton />
+        </div>
       </Card>
     </main>
   )
