@@ -1,4 +1,4 @@
-import { Navigate, Outlet, Route, Routes } from "react-router-dom"
+import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom"
 import { useAuth } from "./auth/AuthContext.tsx"
 import { Layout } from "./components/Layout.tsx"
 import { FullScreen } from "./components/ui.tsx"
@@ -30,9 +30,10 @@ function ConfigMissing() {
 
 function RequireAuth() {
   const { ready, session, profile, profileError, refresh } = useAuth()
+  const location = useLocation()
   if (!ready) return <FullScreen title="불러오는 중" />
   if (!session) {
-    const next = `${window.location.pathname}${window.location.search}`
+    const next = `${location.pathname}${location.search}`
     return <Navigate to={`/login?next=${encodeURIComponent(next)}`} replace />
   }
   if (profileError) {

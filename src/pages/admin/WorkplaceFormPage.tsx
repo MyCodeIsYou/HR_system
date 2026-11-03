@@ -176,7 +176,8 @@ export function WorkplaceFormPage() {
     navigate("/admin/workplaces")
   }
 
-  const link = token ? `${window.location.origin}/c/${token}` : ""
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "")
+  const link = token ? `${window.location.origin}${base}/c/${token}` : ""
 
   return (
     <Page
