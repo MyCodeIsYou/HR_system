@@ -116,6 +116,7 @@ export function penaltyLines(result: AttendanceResult): string[] {
     if (result.penalty_type === "annual_leave") lines.push(`연차 ${formatMinutes(result.leave_minutes_deducted)} 차감`)
     if (result.penalty_type === "none") lines.push("제재 없음")
   }
+  if (result.overtime_started) lines.push("야근 시작")
   if (result.overtime_minutes > 0) {
     lines.push(`야근 ${formatMinutes(result.overtime_minutes)}`)
     lines.push(`보상휴가 ${formatMinutes(result.comp_leave_minutes_granted)}`)

@@ -252,7 +252,7 @@ export function WorkplaceFormPage() {
               ) : null}
             </>
           ) : null}
-          <Field label="야근 인정 시작">
+          <Field label="야근 인정 시작" hint="이 시각 이후의 출근은 지각이 아닙니다. 그날 다른 출근이 없어도 이 시각이 야근 시작입니다.">
             <input type="time" value={draft.overtime_start} onChange={(event) => patch("overtime_start", event.target.value)} required />
           </Field>
           <Field label="야근 분" hint="이 분마다 오른쪽 분만큼 보상휴가를 줍니다. 기본은 1분당 1분입니다.">

@@ -309,11 +309,14 @@ declare
   v_event_id uuid;
   v_summary jsonb;
   v_already boolean;
+  v_overtime_at timestamptz;
+  v_overtime_started boolean := false;
 begin
   v_local := p_occurred_at at time zone p_workplace.timezone;
   v_work_date := v_local::date;
   v_start := (v_work_date + p_workplace.work_start) at time zone p_workplace.timezone;
   v_deadline := v_start + make_interval(mins => p_workplace.late_grace_minutes);
+  v_overtime_at := (v_work_date + p_workplace.overtime_start) at time zone p_workplace.timezone;
 
   select exists (
     select 1
@@ -324,7 +327,9 @@ begin
       and work_date = v_work_date
   ) into v_already;
 
-  if not v_already and p_occurred_at > v_deadline then
+  if p_occurred_at >= v_overtime_at then
+    v_overtime_started := true;
+  elsif not v_already and p_occurred_at > v_deadline then
     v_late_minutes := ceil(extract(epoch from (p_occurred_at - v_start)) / 60.0)::integer;
   end if;
 
@@ -379,6 +384,7 @@ begin
     'leave_minutes_deducted', v_deduct,
     'overtime_minutes', 0,
     'comp_leave_minutes_granted', 0,
+    'overtime_started', v_overtime_started,
     'event_id', v_event_id,
     'notice', null
   );

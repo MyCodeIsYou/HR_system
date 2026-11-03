@@ -57,6 +57,7 @@ export type AttendanceResult = {
   leave_minutes_deducted: number
   overtime_minutes: number
   comp_leave_minutes_granted: number
+  overtime_started?: boolean
   event_id: string
   notice: "open_shift_left" | null
 }
