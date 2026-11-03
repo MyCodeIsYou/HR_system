@@ -95,6 +95,7 @@ export async function inviteMember(body: {
   name: string
   role: "admin" | "employee"
   workplace_id: string | null
+  job_title: string | null
   employee_number: string | null
   hired_at: string | null
   initial_annual_days: number

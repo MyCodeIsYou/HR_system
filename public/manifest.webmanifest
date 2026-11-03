@@ -6,8 +6,8 @@
   "scope": "/HR_system/",
   "display": "standalone",
   "lang": "ko",
-  "background_color": "#14161a",
-  "theme_color": "#14161a",
+  "background_color": "#101428",
+  "theme_color": "#101428",
   "icons": [
     {
       "src": "/icons/icon-192.png",

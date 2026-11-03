@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { useAuth } from "../auth/AuthContext.tsx"
-import { Card, Empty, Page } from "../components/ui.tsx"
-import { eventLabel, formatDate, formatMinutes, formatTime, humanError, oneName, seoulToday } from "../lib/format.ts"
+import { Page } from "../components/ui.tsx"
+import { eventLabel, formatDate, formatLeaveDays, formatTime, humanError, oneName, seoulToday } from "../lib/format.ts"
 import { supabase } from "../lib/supabase.ts"
 import type { AttendanceEvent, LatePenalty, LeaveBalance, LeaveType } from "../types.ts"
 
@@ -57,86 +57,121 @@ export function HomePage() {
   const latest = events.find((event) => !event.voided_at)
 
   return (
-    <Page title="내 근태" description="오늘 출퇴근, 연차, 보상휴가, 지각 내역입니다.">
+    <Page title="내 근태" description="오늘 출퇴근, 연차, 보상휴가, 여름휴가, 남은 휴가입니다.">
       {error ? <p className="mb-4 text-sm text-danger">{error}</p> : null}
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Card>
-          <p className="text-sm text-muted">오늘</p>
-          <p className="mt-2 text-xl font-semibold">
+      <div className="grid max-w-3xl grid-cols-3 gap-2 sm:grid-cols-5">
+        <div className="ds-card px-3 py-2">
+          <p className="text-xs text-muted">오늘</p>
+          <p className="mt-1 text-sm font-semibold">
             {latest && !latest.voided_at && latest.event_type === "in" && latest.work_date === today
-              ? `근무 중 · ${formatTime(latest.occurred_at)} 출근`
+              ? `근무 중 · ${formatTime(latest.occurred_at)}`
               : todayEvents.some((event) => event.event_type === "out")
                 ? "퇴근"
                 : "출근 전"}
           </p>
-        </Card>
-        <Card>
-          <p className="text-sm text-muted">연차</p>
-          <p className="mt-2 text-xl font-semibold tabular-nums">{formatMinutes(balance(balances, "annual"))}</p>
-        </Card>
-        <Card>
-          <p className="text-sm text-muted">보상휴가</p>
-          <p className="mt-2 text-xl font-semibold tabular-nums">{formatMinutes(balance(balances, "comp"))}</p>
-        </Card>
+        </div>
+        <div className="ds-card px-3 py-2">
+          <p className="text-xs text-muted">연차</p>
+          <p className="mt-1 text-sm font-semibold tabular-nums">{formatLeaveDays(balance(balances, "annual"))}</p>
+        </div>
+        <div className="ds-card px-3 py-2">
+          <p className="text-xs text-muted">보상휴가</p>
+          <p className="mt-1 text-sm font-semibold tabular-nums">{formatLeaveDays(balance(balances, "comp"))}</p>
+        </div>
+        <div className="ds-card px-3 py-2">
+          <p className="text-xs text-muted">여름휴가</p>
+          <p className="mt-1 text-sm font-semibold tabular-nums">{formatLeaveDays(balance(balances, "summer"))}</p>
+        </div>
+        <div className="ds-card px-3 py-2">
+          <p className="text-xs text-muted">남은 휴가</p>
+          <p className="mt-1 text-sm font-semibold tabular-nums">
+            {formatLeaveDays(balance(balances, "annual") + balance(balances, "comp") + balance(balances, "summer"))}
+          </p>
+        </div>
       </div>
 
-      <h2 className="mt-8 mb-3 text-lg font-semibold">오늘 기록</h2>
-      {todayEvents.length === 0 ? <Empty>오늘 출퇴근이 없습니다.</Empty> : null}
-      <div className="space-y-2">
-        {todayEvents.map((event) => (
-          <Card key={event.id} className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">{eventLabel(event.event_type)}</p>
-              <p className="text-sm text-muted">{oneName(event.workplaces)}</p>
-            </div>
-            <p className="tabular-nums">{formatTime(event.occurred_at)}</p>
-          </Card>
-        ))}
-      </div>
-
-      <h2 className="mt-8 mb-3 text-lg font-semibold">최근 출퇴근</h2>
-      {events.length === 0 ? <Empty>기록이 없습니다.</Empty> : null}
-      <div className="ds-table">
-        <table className="w-full min-w-[32rem] text-left text-sm">
-          <thead className="text-muted">
-            <tr>
-              <th className="px-4 py-3 font-medium">날짜</th>
-              <th className="px-4 py-3 font-medium">구분</th>
-              <th className="px-4 py-3 font-medium">시각</th>
-              <th className="px-4 py-3 font-medium">사업장</th>
-            </tr>
-          </thead>
-          <tbody>
-            {events.map((event) => (
-              <tr key={event.id} className={event.voided_at ? "text-muted line-through" : undefined}>
-                <td className="px-4 py-3">{formatDate(event.work_date)}</td>
-                <td className="px-4 py-3">{eventLabel(event.event_type)}</td>
-                <td className="px-4 py-3 tabular-nums">{formatTime(event.occurred_at)}</td>
-                <td className="px-4 py-3">{oneName(event.workplaces)}</td>
+      <h2 className="mt-5 mb-2 text-sm font-semibold">오늘 기록</h2>
+      {todayEvents.length === 0 ? <p className="text-xs text-muted">오늘 출퇴근이 없습니다.</p> : null}
+      {todayEvents.length > 0 ? (
+        <div className="ds-table is-compact max-w-3xl">
+          <table className="w-full text-left">
+            <thead className="text-muted">
+              <tr>
+                <th className="font-medium">구분</th>
+                <th className="font-medium">시각</th>
+                <th className="font-medium">사업장</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {todayEvents.map((event) => (
+                <tr key={event.id}>
+                  <td>{eventLabel(event.event_type)}</td>
+                  <td className="tabular-nums">{formatTime(event.occurred_at)}</td>
+                  <td>{oneName(event.workplaces)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
 
-      <h2 className="mt-8 mb-3 text-lg font-semibold">지각</h2>
-      {penalties.length === 0 ? <Empty>지각 내역이 없습니다.</Empty> : null}
-      <div className="space-y-2">
-        {penalties.map((penalty) => (
-          <Card key={penalty.id} className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <p className="font-medium">{formatDate(penalty.work_date)}</p>
-              <p className="text-sm text-muted">{oneName(penalty.workplaces)}</p>
-            </div>
-            <p className="text-sm">
-              {penalty.late_minutes}분
-              {penalty.penalty_type === "fine" ? ` · 벌금 ${penalty.fine_amount.toLocaleString("ko-KR")}원` : ""}
-              {penalty.penalty_type === "annual_leave" ? ` · 연차 ${formatMinutes(penalty.leave_minutes_deducted)}` : ""}
-              {penalty.penalty_type === "none" ? " · 제재 없음" : ""}
-            </p>
-          </Card>
-        ))}
-      </div>
+      <h2 className="mt-5 mb-2 text-sm font-semibold">최근 출퇴근</h2>
+      {events.length === 0 ? <p className="text-xs text-muted">기록이 없습니다.</p> : null}
+      {events.length > 0 ? (
+        <div className="ds-table is-compact max-w-3xl">
+          <table className="w-full text-left">
+            <thead className="text-muted">
+              <tr>
+                <th className="font-medium">날짜</th>
+                <th className="font-medium">구분</th>
+                <th className="font-medium">시각</th>
+                <th className="font-medium">사업장</th>
+              </tr>
+            </thead>
+            <tbody>
+              {events.map((event) => (
+                <tr key={event.id} className={event.voided_at ? "text-muted line-through" : undefined}>
+                  <td>{formatDate(event.work_date)}</td>
+                  <td>{eventLabel(event.event_type)}</td>
+                  <td className="tabular-nums">{formatTime(event.occurred_at)}</td>
+                  <td>{oneName(event.workplaces)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+
+      <h2 className="mt-5 mb-2 text-sm font-semibold">지각</h2>
+      {penalties.length === 0 ? <p className="text-xs text-muted">지각 내역이 없습니다.</p> : null}
+      {penalties.length > 0 ? (
+        <div className="ds-table is-compact max-w-3xl">
+          <table className="w-full text-left">
+            <thead className="text-muted">
+              <tr>
+                <th className="font-medium">날짜</th>
+                <th className="font-medium">사업장</th>
+                <th className="font-medium">지각</th>
+                <th className="font-medium">제재</th>
+              </tr>
+            </thead>
+            <tbody>
+              {penalties.map((penalty) => (
+                <tr key={penalty.id}>
+                  <td>{formatDate(penalty.work_date)}</td>
+                  <td>{oneName(penalty.workplaces)}</td>
+                  <td className="tabular-nums">{penalty.late_minutes}분</td>
+                  <td>
+                    {penalty.penalty_type === "fine" ? `벌금 ${penalty.fine_amount.toLocaleString("ko-KR")}원` : ""}
+                    {penalty.penalty_type === "annual_leave" ? `연차 ${formatLeaveDays(penalty.leave_minutes_deducted)}` : ""}
+                    {penalty.penalty_type === "none" ? "제재 없음" : ""}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
     </Page>
   )
 }

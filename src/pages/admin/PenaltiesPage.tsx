@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
-import { Empty, Page } from "../../components/ui.tsx"
-import { formatDate, formatMinutes, formatWon, humanError, latePolicyLabel, oneName } from "../../lib/format.ts"
+import { Page } from "../../components/ui.tsx"
+import { formatDate, formatLeaveDays, formatWon, humanError, latePolicyLabel, oneName } from "../../lib/format.ts"
 import { supabase } from "../../lib/supabase.ts"
 import type { LatePenalty } from "../../types.ts"
 
@@ -28,35 +28,37 @@ export function PenaltiesPage() {
   return (
     <Page title="지각" description="유예를 넘긴 첫 출근만 지각으로 남습니다. 취소된 출퇴근은 흐리게 표시됩니다.">
       {error ? <p className="mb-4 text-sm text-danger">{humanError(new Error(error))}</p> : null}
-      {rows.length === 0 ? <Empty>지각 기록이 없습니다.</Empty> : null}
-      <div className="ds-table">
-        <table className="w-full min-w-[40rem] text-left text-sm">
+      {rows.length === 0 ? <p className="text-xs text-muted">지각 기록이 없습니다.</p> : null}
+      {rows.length > 0 ? (
+      <div className="ds-table is-compact max-w-3xl">
+        <table className="w-full text-left">
           <thead className="text-muted">
             <tr>
-              <th className="px-4 py-3 font-medium">날짜</th>
-              <th className="px-4 py-3 font-medium">구성원</th>
-              <th className="px-4 py-3 font-medium">사업장</th>
-              <th className="px-4 py-3 font-medium">지각</th>
-              <th className="px-4 py-3 font-medium">제재</th>
+              <th className="font-medium">날짜</th>
+              <th className="font-medium">구성원</th>
+              <th className="font-medium">사업장</th>
+              <th className="font-medium">지각</th>
+              <th className="font-medium">제재</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => (
               <tr key={row.id} className={row.voided_at ? "text-muted line-through" : undefined}>
-                <td className="px-4 py-3">{formatDate(row.work_date)}</td>
-                <td className="px-4 py-3">{oneName(row.profiles)}</td>
-                <td className="px-4 py-3">{oneName(row.workplaces)}</td>
-                <td className="px-4 py-3 tabular-nums">{row.late_minutes}분</td>
-                <td className="px-4 py-3">
+                <td>{formatDate(row.work_date)}</td>
+                <td>{oneName(row.profiles)}</td>
+                <td>{oneName(row.workplaces)}</td>
+                <td className="tabular-nums">{row.late_minutes}분</td>
+                <td>
                   {latePolicyLabel(row.penalty_type)}
                   {row.penalty_type === "fine" ? ` ${formatWon(row.fine_amount)}` : ""}
-                  {row.penalty_type === "annual_leave" ? ` ${formatMinutes(row.leave_minutes_deducted)}` : ""}
+                  {row.penalty_type === "annual_leave" ? ` ${formatLeaveDays(row.leave_minutes_deducted)}` : ""}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      ) : null}
     </Page>
   )
 }

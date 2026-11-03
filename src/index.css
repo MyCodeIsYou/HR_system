@@ -11,19 +11,19 @@
 
 @theme {
   --font-sans: "Pretendard", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
-  --color-canvas: #14161a;
-  --color-paper: #14161a;
-  --color-ink: #f4efe6;
-  --color-muted: #b7b1a8;
-  --color-card: #24344a;
-  --color-line: #3d5678;
-  --color-accent: #8ec8ff;
-  --color-accent-dark: #5aa6f0;
-  --color-glow: #e7c27a;
-  --color-select: #7ec8ff;
-  --color-warn: #e7c27a;
-  --color-danger: #ff9d9d;
-  --color-ok: #b7e0b1;
+  --color-canvas: #101428;
+  --color-paper: #101428;
+  --color-ink: #f5f7ff;
+  --color-muted: #a7b0cc;
+  --color-card: #1a2344;
+  --color-line: #31406c;
+  --color-accent: #2fe3c8;
+  --color-accent-dark: #14b8a6;
+  --color-glow: #ff8a3d;
+  --color-select: #7c6bff;
+  --color-warn: #ffb020;
+  --color-danger: #ff7a90;
+  --color-ok: #3ee0a0;
   --radius-xs: 4px;
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -31,9 +31,9 @@
   --radius-xl: 16px;
   --radius-2xl: 16px;
   --radius-3xl: 16px;
-  --shadow-sm: inset 0 1.5px 0 rgb(255 236 200 / 0.55), inset 0 -10px 16px rgb(0 0 0 / 0.32), 0 8px 14px rgb(0 0 0 / 0.38);
-  --shadow-md: inset 0 1.5px 0 rgb(255 236 200 / 0.7), inset 0 12px 18px rgb(255 210 140 / 0.06), inset 0 -18px 26px rgb(0 0 0 / 0.4), 0 16px 28px rgb(0 0 0 / 0.42);
-  --shadow-lg: inset 0 2px 0 rgb(255 244 214 / 0.8), inset 0 -24px 32px rgb(0 0 0 / 0.46), 0 28px 48px rgb(0 0 0 / 0.5);
+  --shadow-sm: 0 10px 24px rgb(4 8 24 / 0.35);
+  --shadow-md: 0 16px 36px rgb(4 8 24 / 0.42);
+  --shadow-lg: 0 24px 48px rgb(4 8 24 / 0.5);
 }
 
 :root {
@@ -50,10 +50,10 @@ body {
   margin: 0;
   min-height: 100svh;
   background:
-    radial-gradient(ellipse 95% 48% at 50% -12%, rgb(255 198 110 / 0.42), rgb(255 170 70 / 0.1) 34%, transparent 70%),
-    radial-gradient(ellipse 55% 42% at 12% 80%, rgb(70 150 255 / 0.28), transparent 62%),
-    radial-gradient(ellipse 40% 32% at 92% 18%, rgb(90 170 255 / 0.2), transparent 60%),
-    linear-gradient(180deg, #2a241c 0%, #151c28 36%, #101820 100%);
+    radial-gradient(ellipse 42% 36% at 92% 0%, rgb(47 227 200 / 0.28), transparent 62%),
+    radial-gradient(ellipse 36% 32% at 0% 100%, rgb(255 138 61 / 0.22), transparent 64%),
+    radial-gradient(ellipse 28% 24% at 78% 78%, rgb(124 107 255 / 0.2), transparent 68%),
+    linear-gradient(165deg, #171c38 0%, #101428 42%, #0c1022 100%);
   color: var(--color-ink);
   font-family: var(--font-sans);
   text-rendering: optimizeLegibility;
@@ -66,9 +66,8 @@ body::before {
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(180deg, rgb(255 226 170 / 0.18), transparent 22%),
-    radial-gradient(ellipse 70% 18% at 50% 0%, rgb(255 244 210 / 0.28), transparent 70%),
-    radial-gradient(ellipse 48% 36% at 0% 100%, rgb(80 170 255 / 0.22), transparent 70%);
+    radial-gradient(ellipse 30% 22% at 100% 0%, rgb(47 227 200 / 0.16), transparent 70%),
+    radial-gradient(ellipse 24% 20% at 0% 100%, rgb(255 138 61 / 0.12), transparent 72%);
 }
 
 #root {
@@ -78,7 +77,7 @@ body::before {
 }
 
 ::selection {
-  background: rgb(90 170 255 / 0.45);
+  background: rgb(47 227 200 / 0.45);
   color: white;
 }
 
@@ -100,37 +99,32 @@ input,
 select,
 textarea {
   width: 100%;
-  border: var(--ds-border) solid rgb(126 190 255 / 0.45);
-  border-radius: var(--radius-md);
-  background: linear-gradient(180deg, #17202c, #24364c);
+  border: var(--ds-border) solid rgb(90 110 170 / 0.45);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #1a2140, #141a33);
   padding: 0.65rem 0.75rem;
   color: var(--color-ink);
-  box-shadow:
-    inset 0 4px 8px rgb(0 0 0 / 0.55),
-    inset 0 -1px 0 rgb(160 210 255 / 0.35),
-    0 0 0 3px rgb(90 160 255 / 0.14),
-    0 0 18px rgb(80 160 255 / 0.18);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 8px 18px rgb(4 8 24 / 0.28);
 }
 
 input::placeholder,
 textarea::placeholder {
-  color: #8d877e;
+  color: #7e89a8;
 }
 
 input:focus,
 select:focus,
 textarea:focus {
   outline: none;
-  border-color: rgb(170 220 255 / 0.95);
+  border-color: rgb(47 227 200 / 0.9);
   box-shadow:
-    inset 0 4px 8px rgb(0 0 0 / 0.5),
-    inset 0 -1px 0 rgb(190 225 255 / 0.55),
-    0 0 0 4px rgb(110 180 255 / 0.32),
-    0 0 28px rgb(80 170 255 / 0.55);
+    inset 0 1px 0 rgb(255 255 255 / 0.08),
+    0 0 0 4px rgb(47 227 200 / 0.18),
+    0 0 24px rgb(47 227 200 / 0.28);
 }
 
 option {
-  background: #2a3038;
+  background: #1a2140;
   color: var(--color-ink);
 }
 
@@ -153,35 +147,29 @@ option {
   right: 16%;
   height: 1.5px;
   border-radius: 999px;
-  background: linear-gradient(90deg, transparent, rgb(255 244 210 / 0.95), transparent);
+  background: linear-gradient(90deg, transparent, rgb(47 227 200 / 0.85), rgb(255 138 61 / 0.75), transparent);
   pointer-events: none;
 }
 
 .ds-card {
-  border: var(--ds-border) solid rgb(140 196 255 / 0.42);
-  border-radius: var(--radius-lg);
+  border: var(--ds-border) solid rgb(90 120 190 / 0.35);
+  border-radius: 20px;
   background:
-    linear-gradient(180deg, rgb(170 214 255 / 0.28) 0%, rgb(80 140 210 / 0.08) 22%, rgb(0 0 0 / 0.2) 100%),
-    #24384f;
-  box-shadow:
-    var(--shadow-md),
-    0 0 28px rgb(80 160 255 / 0.16),
-    inset 8px 0 24px rgb(80 160 255 / 0.08);
+    radial-gradient(ellipse 80% 60% at 0% 0%, rgb(47 227 200 / 0.16), transparent 55%),
+    radial-gradient(ellipse 50% 40% at 100% 100%, rgb(255 138 61 / 0.1), transparent 60%),
+    linear-gradient(180deg, #222a52, #171d3b);
+  box-shadow: var(--shadow-md), inset 0 1px 0 rgb(255 255 255 / 0.08);
 }
 
 .ds-card-warm {
   background:
-    linear-gradient(180deg, rgb(255 220 160 / 0.28) 0%, rgb(255 255 255 / 0.04) 20%, rgb(0 0 0 / 0.2) 100%),
-    #3d3830;
+    radial-gradient(ellipse 70% 55% at 100% 0%, rgb(255 138 61 / 0.22), transparent 58%),
+    linear-gradient(180deg, #2a2448, #1a1836);
 }
 
 a:hover > .ds-card {
-  border-color: rgb(170 220 255 / 0.95);
-  box-shadow:
-    inset 0 1.5px 0 rgb(220 240 255 / 0.9),
-    inset 0 -18px 24px rgb(0 0 0 / 0.38),
-    0 0 28px rgb(90 180 255 / 0.62),
-    0 16px 28px rgb(0 0 0 / 0.42);
+  border-color: rgb(47 227 200 / 0.7);
+  box-shadow: 0 0 28px rgb(47 227 200 / 0.22), var(--shadow-md);
 }
 
 .ds-button {
@@ -189,47 +177,33 @@ a:hover > .ds-card {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: var(--ds-border-strong) solid rgb(255 214 140 / 0.72);
-  border-radius: var(--radius-md);
-  background: linear-gradient(180deg, #6a624f 0%, #3d4552 28%, #242a33 100%);
-  padding: 0.55rem 0.95rem;
-  color: var(--color-ink);
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ffb14a 0%, #ff7a3c 55%, #ff5d8f 100%);
+  padding: 0.55rem 1.05rem;
+  color: #1a1020;
   font-size: 0.875rem;
-  font-weight: 600;
-  box-shadow:
-    inset 0 1.5px 0 rgb(255 244 214 / 0.85),
-    inset 0 8px 12px rgb(255 210 140 / 0.12),
-    inset 0 -12px 16px rgb(40 110 210 / 0.35),
-    0 8px 14px rgb(0 0 0 / 0.4),
-    0 0 18px rgb(80 160 255 / 0.28);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  font-weight: 700;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.45), 0 10px 22px rgb(255 122 60 / 0.32);
+  transition: filter 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .ds-button:hover {
-  border-color: rgb(170 220 255 / 0.95);
-  background: linear-gradient(180deg, #8eb6e4 0%, #3d6ea8 34%, #24384f 100%);
-  box-shadow:
-    inset 0 1.5px 0 rgb(230 244 255 / 0.95),
-    inset 0 10px 16px rgb(140 200 255 / 0.35),
-    inset 0 -10px 14px rgb(0 0 0 / 0.35),
-    0 10px 16px rgb(0 0 0 / 0.4),
-    0 0 28px rgb(80 170 255 / 0.65);
+  filter: brightness(1.06);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.5), 0 12px 26px rgb(255 122 60 / 0.42);
 }
 
 .ds-button:active {
-  transform: translateY(2px);
-  background: linear-gradient(180deg, #2a3038, #1c2128);
-  box-shadow:
-    inset 0 4px 10px rgb(0 0 0 / 0.55),
-    0 2px 4px rgb(0 0 0 / 0.3);
+  transform: translateY(1px);
+  filter: brightness(0.96);
 }
 
 .ds-button:disabled {
   transform: none;
-  border-color: rgb(255 255 255 / 0.08);
-  background: #2a2e34;
-  color: #8d877e;
-  box-shadow: inset 0 2px 6px rgb(0 0 0 / 0.35);
+  filter: none;
+  background: #2a3154;
+  color: #8b95b2;
+  box-shadow: none;
 }
 
 .ds-button:disabled::before {
@@ -237,45 +211,38 @@ a:hover > .ds-card {
 }
 
 .ds-button-ghost {
-  border-color: rgb(180 200 230 / 0.28);
-  background: linear-gradient(180deg, #4a5564 0%, #2c3440 40%, #222830 100%);
-  box-shadow:
-    inset 0 1.5px 0 rgb(230 240 255 / 0.4),
-    inset 0 -10px 14px rgb(0 0 0 / 0.38),
-    0 8px 14px rgb(0 0 0 / 0.35);
+  border: var(--ds-border) solid rgb(47 227 200 / 0.35);
+  background: linear-gradient(180deg, #243056, #1a2244);
+  color: var(--color-ink);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08);
 }
 
 .ds-button-ghost:hover {
-  border-color: rgb(170 220 255 / 0.95);
-  background: linear-gradient(180deg, #6f9ed4 0%, #2f5584 42%, #1d334c);
-  box-shadow:
-    inset 0 1.5px 0 rgb(226 242 255 / 0.9),
-    inset 0 -10px 14px rgb(0 0 0 / 0.35),
-    0 0 24px rgb(90 170 255 / 0.6);
+  border-color: rgb(47 227 200 / 0.8);
+  background: linear-gradient(180deg, #2a3c68, #1c284c);
+  box-shadow: 0 0 18px rgb(47 227 200 / 0.28);
+  filter: none;
 }
 
 .ds-button-danger {
-  border-color: rgb(255 157 157 / 0.55);
+  background: linear-gradient(135deg, #ff8fa3, #ff4d6d);
+  color: white;
 }
 
 .ds-button-danger:hover {
-  border-color: rgb(255 180 180 / 0.95);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.16),
-    0 0 16px rgb(255 120 120 / 0.28);
+  filter: brightness(1.06);
+  box-shadow: 0 10px 22px rgb(255 77 109 / 0.35);
 }
 
 .ds-header {
   position: sticky;
   top: 0;
   z-index: 20;
-  border-bottom: var(--ds-border) solid rgb(255 214 150 / 0.28);
+  border-bottom: var(--ds-border) solid rgb(47 227 200 / 0.18);
   background:
-    linear-gradient(180deg, rgb(255 214 140 / 0.2), rgb(20 28 40 / 0.78) 46%, rgb(12 20 32 / 0.92)),
-    radial-gradient(ellipse 40% 80% at 0% 0%, rgb(80 160 255 / 0.2), transparent 70%);
-  box-shadow:
-    inset 0 1.5px 0 rgb(255 244 214 / 0.7),
-    0 18px 32px rgb(0 0 0 / 0.28);
+    linear-gradient(90deg, rgb(47 227 200 / 0.12), transparent 28%, rgb(255 138 61 / 0.1) 100%),
+    rgb(14 18 38 / 0.82);
+  box-shadow: 0 12px 28px rgb(4 8 24 / 0.28);
   backdrop-filter: blur(18px);
 }
 
@@ -289,29 +256,25 @@ a:hover > .ds-card {
 }
 
 .ds-nav:hover {
-  border-color: rgb(140 200 255 / 0.7);
+  border-color: rgb(47 227 200 / 0.45);
   color: var(--color-ink);
-  box-shadow: 0 0 14px rgb(80 160 255 / 0.28);
 }
 
 .ds-nav.is-active {
-  border-color: rgb(186 226 255 / 0.95);
-  background: linear-gradient(180deg, #9ec8f5, #3f78b8 40%, #24486e);
-  color: white;
-  font-weight: 600;
-  box-shadow:
-    inset 0 1.5px 0 rgb(236 246 255 / 0.95),
-    inset 0 -8px 10px rgb(0 0 0 / 0.3),
-    0 0 20px rgb(90 180 255 / 0.7);
+  border-color: transparent;
+  background: linear-gradient(135deg, #2fe3c8, #3d8bff 70%);
+  color: #07121c;
+  font-weight: 700;
+  box-shadow: 0 8px 18px rgb(47 227 200 / 0.28);
 }
 
 .ds-table {
   overflow: auto;
-  border: var(--ds-border) solid rgb(140 196 255 / 0.35);
-  border-radius: var(--radius-lg);
+  border: var(--ds-border) solid rgb(90 110 180 / 0.35);
+  border-radius: 20px;
   background:
-    linear-gradient(180deg, rgb(140 190 255 / 0.16), rgb(0 0 0 / 0.16)),
-    #1d2a3a;
+    radial-gradient(ellipse 40% 30% at 100% 0%, rgb(124 107 255 / 0.16), transparent 60%),
+    #161c38;
   padding: 8px;
   box-shadow: var(--shadow-md);
 }
@@ -334,11 +297,31 @@ a:hover > .ds-card {
 }
 
 .ds-table td {
-  border-top: var(--ds-border) solid rgb(255 232 190 / 0.28);
-  border-bottom: var(--ds-border) solid rgb(0 0 0 / 0.4);
-  background: linear-gradient(180deg, rgb(160 205 255 / 0.22), transparent 42%), #2c3d54;
+  border-top: var(--ds-border) solid rgb(255 255 255 / 0.06);
+  border-bottom: var(--ds-border) solid rgb(0 0 0 / 0.28);
+  background: linear-gradient(180deg, rgb(47 227 200 / 0.08), transparent 46%), #1c2448;
   padding: 12px 16px;
-  box-shadow: inset 0 1px 0 rgb(255 244 214 / 0.35), inset 0 -8px 12px rgb(0 0 0 / 0.28);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06);
+}
+
+.ds-table.is-compact {
+  padding: 4px;
+}
+
+.ds-table.is-compact table {
+  border-spacing: 0 4px;
+  font-size: 0.8125rem;
+}
+
+.ds-table.is-center th,
+.ds-table.is-center td {
+  text-align: center;
+}
+
+.ds-table.is-compact th,
+.ds-table.is-compact td {
+  padding: 6px 10px;
+  white-space: nowrap;
 }
 
 .ds-table td:first-child {
@@ -353,23 +336,23 @@ a:hover > .ds-card {
 
 .ds-table tbody tr:hover,
 .ds-table tbody tr.is-selected {
-  filter: drop-shadow(0 0 12px rgb(80 170 255 / 0.75)) drop-shadow(0 8px 8px rgb(0 0 0 / 0.38));
+  filter: drop-shadow(0 0 12px rgb(47 227 200 / 0.35));
 }
 
 .ds-table tbody tr:hover td,
 .ds-table tbody tr.is-selected td {
-  border-color: rgb(186 226 255 / 0.95);
-  background: linear-gradient(180deg, rgb(210 232 255 / 0.55), #3d78b8 42%, #24507a);
-  box-shadow: inset 0 1px 0 rgb(220 236 255 / 0.7), inset 0 -8px 12px rgb(0 0 0 / 0.3);
+  border-color: rgb(47 227 200 / 0.7);
+  background: linear-gradient(180deg, rgb(47 227 200 / 0.28), #1f6f78 48%, #17324a);
+  box-shadow: inset 0 1px 0 rgb(210 255 246 / 0.35);
 }
 
 .ds-empty {
   display: grid;
   justify-items: center;
   gap: 8px;
-  border: var(--ds-border) solid rgb(255 214 150 / 0.22);
-  border-radius: var(--radius-lg);
-  background: linear-gradient(180deg, rgb(255 214 150 / 0.14), #2a3038 30%, #22262c);
+  border: var(--ds-border) solid rgb(255 138 61 / 0.28);
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgb(255 138 61 / 0.12), #1a2140 36%, #151a32);
   padding: 32px 16px;
   color: var(--color-muted);
   text-align: center;
@@ -382,7 +365,7 @@ a:hover > .ds-card {
   width: 22px;
   height: 22px;
   place-items: center;
-  border: var(--ds-border) solid rgb(231 194 122 / 0.4);
+  border: var(--ds-border) solid rgb(47 227 200 / 0.45);
   border-radius: var(--radius-sm);
   color: var(--color-accent);
   font-size: 12px;
@@ -404,26 +387,23 @@ a:hover > .ds-card {
 }
 
 .ds-notice {
-  border: var(--ds-border) solid rgb(231 194 122 / 0.4);
-  background: #3a3428;
+  border: var(--ds-border) solid rgb(255 176 32 / 0.4);
+  background: #2c2418;
   color: var(--color-warn);
 }
 
 .ds-toast {
-  border: var(--ds-border) solid rgb(255 236 200 / 0.8);
-  background: linear-gradient(180deg, #fff8ea, #f0e2c4);
-  color: #2a261f;
-  box-shadow:
-    inset 0 1.5px 0 rgb(255 255 255 / 0.9),
-    inset 0 -8px 12px rgb(120 80 20 / 0.12),
-    0 12px 20px rgb(0 0 0 / 0.35);
+  border: 0;
+  background: linear-gradient(135deg, #2fe3c8, #7c6bff);
+  color: #07121c;
+  box-shadow: 0 12px 24px rgb(47 227 200 / 0.22);
 }
 
 .ds-progress {
   height: 8px;
   overflow: hidden;
   border-radius: 999px;
-  background: #2a3038;
+  background: #1a2140;
   box-shadow: inset 0 1px 3px rgb(0 0 0 / 0.45);
 }
 
@@ -433,6 +413,6 @@ a:hover > .ds-card {
   width: 42%;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #e7c27a, #8ec8ff 45%, #4aa6ff);
-  box-shadow: 0 0 10px rgb(126 176 255 / 0.45);
+  background: linear-gradient(90deg, #2fe3c8, #7c6bff 55%, #ff8a3d);
+  box-shadow: 0 0 10px rgb(47 227 200 / 0.45);
 }

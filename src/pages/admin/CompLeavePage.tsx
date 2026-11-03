@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
-import { Card, Empty, Page } from "../../components/ui.tsx"
-import { formatDate, formatDateTime, formatMinutes, humanError, oneName } from "../../lib/format.ts"
+import { Page } from "../../components/ui.tsx"
+import { formatDate, formatDateTime, formatLeaveDays, humanError, oneName } from "../../lib/format.ts"
 import { supabase } from "../../lib/supabase.ts"
 import type { LeaveBalance, LeaveLedgerEntry, Profile } from "../../types.ts"
 
@@ -49,36 +49,60 @@ export function CompLeavePage() {
   }, [])
 
   return (
-    <Page title="보상휴가" description="퇴근이 야근 인정 시각을 넘기면 사업장 비율대로 보상휴가가 쌓입니다. 잔액은 원장의 합입니다.">
+    <Page title="보상휴가" description="퇴근이 야근 인정 시각을 넘기면 보상휴가가 쌓입니다. 1일, 반차 0.5일, 반반차 0.25일입니다.">
       {error ? <p className="mb-4 text-sm text-danger">{humanError(new Error(error))}</p> : null}
-      <div className="grid gap-3 sm:grid-cols-2">
-        {balances.map((row) => (
-          <Card key={row.user_id}>
-            <p className="text-sm text-muted">{row.name}</p>
-            <p className="mt-1 text-xl font-semibold tabular-nums">{formatMinutes(row.balance_minutes)}</p>
-          </Card>
-        ))}
-      </div>
-      {balances.length === 0 ? <Empty>쌓인 보상휴가가 없습니다.</Empty> : null}
-      <h2 className="mt-8 mb-3 text-lg font-semibold">발생 내역</h2>
-      {entries.length === 0 ? <Empty>내역이 없습니다.</Empty> : null}
-      <div className="space-y-2">
-        {entries.map((entry) => (
-          <Card key={entry.id} className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <p className="font-medium">{oneName(entry.subject)}</p>
-              <p className="text-sm text-muted">
-                {entry.reason}
-                {entry.work_date ? ` · ${formatDate(entry.work_date)}` : ""} · {formatDateTime(entry.created_at)}
-              </p>
-            </div>
-            <p className={`tabular-nums ${entry.delta_minutes < 0 ? "text-danger" : "text-ok"}`}>
-              {entry.delta_minutes > 0 ? "+" : ""}
-              {formatMinutes(entry.delta_minutes)}
-            </p>
-          </Card>
-        ))}
-      </div>
+      {balances.length === 0 ? <p className="text-xs text-muted">쌓인 보상휴가가 없습니다.</p> : null}
+      {balances.length > 0 ? (
+        <div className="ds-table is-compact max-w-3xl">
+          <table className="w-full text-left">
+            <thead className="text-muted">
+              <tr>
+                <th className="font-medium">구성원</th>
+                <th className="font-medium">잔여</th>
+              </tr>
+            </thead>
+            <tbody>
+              {balances.map((row) => (
+                <tr key={row.user_id}>
+                  <td>{row.name}</td>
+                  <td className="tabular-nums">{formatLeaveDays(row.balance_minutes)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+      <h2 className="mt-5 mb-2 text-sm font-semibold">발생 내역</h2>
+      {entries.length === 0 ? <p className="text-xs text-muted">내역이 없습니다.</p> : null}
+      {entries.length > 0 ? (
+        <div className="ds-table is-compact max-w-3xl">
+          <table className="w-full text-left">
+            <thead className="text-muted">
+              <tr>
+                <th className="font-medium">구성원</th>
+                <th className="font-medium">변경</th>
+                <th className="font-medium">사유</th>
+                <th className="font-medium">근무일</th>
+                <th className="font-medium">시각</th>
+              </tr>
+            </thead>
+            <tbody>
+              {entries.map((entry) => (
+                <tr key={entry.id}>
+                  <td>{oneName(entry.subject)}</td>
+                  <td className={`tabular-nums ${entry.delta_minutes < 0 ? "text-danger" : "text-ok"}`}>
+                    {entry.delta_minutes > 0 ? "+" : ""}
+                    {formatLeaveDays(entry.delta_minutes)}
+                  </td>
+                  <td>{entry.reason}</td>
+                  <td>{entry.work_date ? formatDate(entry.work_date) : ""}</td>
+                  <td>{formatDateTime(entry.created_at)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
     </Page>
   )
 }

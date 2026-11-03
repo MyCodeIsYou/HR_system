@@ -6,6 +6,7 @@ import { CheckinPage } from "./pages/CheckinPage.tsx"
 import { HomePage } from "./pages/HomePage.tsx"
 import { LoginPage } from "./pages/LoginPage.tsx"
 import { SetupPage } from "./pages/SetupPage.tsx"
+import { AnnualLeavePage } from "./pages/admin/AnnualLeavePage.tsx"
 import { AttendancePage } from "./pages/admin/AttendancePage.tsx"
 import { CompLeavePage } from "./pages/admin/CompLeavePage.tsx"
 import { LeaveAdminPage } from "./pages/admin/LeaveAdminPage.tsx"
@@ -75,6 +76,7 @@ export function App() {
           <Route path="/admin/members" element={<MembersPage />} />
           <Route path="/admin/attendance" element={<AttendancePage />} />
           <Route path="/admin/penalties" element={<PenaltiesPage />} />
+          <Route path="/admin/annual-leave" element={<AnnualLeavePage />} />
           <Route path="/admin/leaves" element={<LeaveAdminPage />} />
           <Route path="/admin/comp-leave" element={<CompLeavePage />} />
         </Route>

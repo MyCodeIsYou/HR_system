@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
-import { Alert, Empty, Page, Toast } from "../../components/ui.tsx"
+import { Alert, Page, Toast } from "../../components/ui.tsx"
 import { adjustLeave } from "../../lib/api.ts"
-import { formatDateTime, formatMinutes, humanError, oneName } from "../../lib/format.ts"
+import { formatDateTime, formatLeaveDays, humanError, leaveDayValue, leaveTypeLabel, oneName, parseLeaveDays } from "../../lib/format.ts"
 import { supabase } from "../../lib/supabase.ts"
 import type { LeaveBalance, LeaveLedgerEntry, LeaveType, Profile } from "../../types.ts"
 
@@ -11,19 +11,14 @@ type MemberLeave = {
   role: Profile["role"]
   annual: number
   comp: number
+  summer: number
   annualDraft: string
   compDraft: string
+  summerDraft: string
 }
 
 function daysLabel(minutes: number): string {
-  const days = Math.round((minutes / 480) * 1000) / 1000
-  return String(days)
-}
-
-function draftMinutes(value: string): number | null {
-  const days = Number(value)
-  if (!Number.isFinite(days)) return null
-  return Math.round(days * 480)
+  return leaveDayValue(minutes)
 }
 
 export function LeaveAdminPage() {
@@ -51,14 +46,17 @@ export function LeaveAdminPage() {
       ((profileResult.data ?? []) as Pick<Profile, "id" | "name" | "role">[]).map((member) => {
         const annual = balances.find((row) => row.user_id === member.id && row.leave_type === "annual")?.balance_minutes ?? 0
         const comp = balances.find((row) => row.user_id === member.id && row.leave_type === "comp")?.balance_minutes ?? 0
+        const summer = balances.find((row) => row.user_id === member.id && row.leave_type === "summer")?.balance_minutes ?? 0
         return {
           id: member.id,
           name: member.name,
           role: member.role,
           annual,
           comp,
+          summer,
           annualDraft: daysLabel(annual),
           compDraft: daysLabel(comp),
+          summerDraft: daysLabel(summer),
         }
       }),
     )
@@ -79,19 +77,22 @@ export function LeaveAdminPage() {
     setMembers((rows) =>
       rows.map((row) => {
         if (row.id !== id) return row
-        return leaveType === "annual" ? { ...row, annualDraft: value } : { ...row, compDraft: value }
+        if (leaveType === "annual") return { ...row, annualDraft: value }
+        if (leaveType === "comp") return { ...row, compDraft: value }
+        return { ...row, summerDraft: value }
       }),
     )
   }
 
   async function commit(member: MemberLeave, leaveType: LeaveType, draft: string) {
-    const current = leaveType === "annual" ? member.annual : member.comp
-    const target = draftMinutes(draft)
-    if (target === null) {
+    const current = leaveType === "annual" ? member.annual : leaveType === "comp" ? member.comp : member.summer
+    const parsed = parseLeaveDays(draft)
+    if ("error" in parsed) {
       updateDraft(member.id, leaveType, daysLabel(current))
-      setError("일수는 숫자로 입력하세요.")
+      setError(parsed.error)
       return
     }
+    const target = parsed.minutes
     const delta = target - current
     if (delta === 0) {
       updateDraft(member.id, leaveType, daysLabel(current))
@@ -106,17 +107,17 @@ export function LeaveAdminPage() {
         userId: member.id,
         leaveType,
         deltaMinutes: delta,
-        reason: leaveType === "annual" ? "기본 연차 수정" : "보상휴가 수정",
+        reason: `${leaveTypeLabel(leaveType)} 수정`,
       })
       setMembers((rows) =>
         rows.map((row) => {
           if (row.id !== member.id) return row
-          return leaveType === "annual"
-            ? { ...row, annual: target, annualDraft: daysLabel(target) }
-            : { ...row, comp: target, compDraft: daysLabel(target) }
+          if (leaveType === "annual") return { ...row, annual: target, annualDraft: daysLabel(target) }
+          if (leaveType === "comp") return { ...row, comp: target, compDraft: daysLabel(target) }
+          return { ...row, summer: target, summerDraft: daysLabel(target) }
         }),
       )
-      setMessage(`${member.name}의 ${leaveType === "annual" ? "기본 연차" : "보상휴가"}를 ${daysLabel(target)}일로 저장했습니다.`)
+      setMessage(`${member.name}의 ${leaveTypeLabel(leaveType)}를 ${daysLabel(target)}일로 저장했습니다.`)
       const { data, error: ledgerError } = await supabase
         .from("leave_ledger")
         .select("id, user_id, leave_type, delta_minutes, reason, work_date, created_at, subject:profiles!leave_ledger_user_id_fkey(name)")
@@ -135,7 +136,7 @@ export function LeaveAdminPage() {
   return (
     <Page
       title="휴가"
-      description="표의 일수를 고치고 칸 밖을 누르거나 Enter를 치면 바로 저장됩니다. 1일은 8시간입니다."
+      description="표의 일수를 고치고 칸 밖을 누르거나 Enter를 치면 저장됩니다. 연차 1일, 반차 0.5일, 반반차 0.25일입니다."
     >
       {error ? (
         <div className="mb-4">
@@ -147,15 +148,16 @@ export function LeaveAdminPage() {
           <Toast>{message}</Toast>
         </div>
       ) : null}
-      {members.length === 0 ? <Empty>구성원이 없습니다.</Empty> : null}
+      {members.length === 0 ? <p className="text-xs text-muted">구성원이 없습니다.</p> : null}
       {members.length > 0 ? (
-        <div className="ds-table">
-          <table>
+        <div className="ds-table is-compact max-w-3xl">
+          <table className="w-full text-left">
             <thead>
               <tr>
                 <th>구성원</th>
                 <th>기본 연차(일)</th>
                 <th>보상휴가(일)</th>
+                <th>여름휴가(일)</th>
               </tr>
             </thead>
             <tbody>
@@ -166,32 +168,55 @@ export function LeaveAdminPage() {
                     {member.role === "admin" ? " · 관리자" : ""}
                   </td>
                   <td>
-                    <input
-                      inputMode="decimal"
-                      aria-label={`${member.name} 기본 연차`}
-                      value={member.annualDraft}
-                      disabled={savingKey === `${member.id}:annual`}
-                      onChange={(event) => updateDraft(member.id, "annual", event.target.value)}
-                      onBlur={(event) => void commit(member, "annual", event.currentTarget.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") event.currentTarget.blur()
-                      }}
-                    />
-                    <p className="mt-1 text-xs text-muted">{formatMinutes(member.annual)}</p>
+                    <span className="inline-flex items-center gap-2">
+                      <input
+                        style={{ width: "5.5rem" }}
+                        inputMode="decimal"
+                        aria-label={`${member.name} 기본 연차`}
+                        value={member.annualDraft}
+                        disabled={savingKey === `${member.id}:annual`}
+                        onChange={(event) => updateDraft(member.id, "annual", event.target.value)}
+                        onBlur={(event) => void commit(member, "annual", event.currentTarget.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") event.currentTarget.blur()
+                        }}
+                      />
+                      <span className="text-muted">{formatLeaveDays(member.annual)}</span>
+                    </span>
                   </td>
                   <td>
-                    <input
-                      inputMode="decimal"
-                      aria-label={`${member.name} 보상휴가`}
-                      value={member.compDraft}
-                      disabled={savingKey === `${member.id}:comp`}
-                      onChange={(event) => updateDraft(member.id, "comp", event.target.value)}
-                      onBlur={(event) => void commit(member, "comp", event.currentTarget.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") event.currentTarget.blur()
-                      }}
-                    />
-                    <p className="mt-1 text-xs text-muted">{formatMinutes(member.comp)}</p>
+                    <span className="inline-flex items-center gap-2">
+                      <input
+                        style={{ width: "5.5rem" }}
+                        inputMode="decimal"
+                        aria-label={`${member.name} 보상휴가`}
+                        value={member.compDraft}
+                        disabled={savingKey === `${member.id}:comp`}
+                        onChange={(event) => updateDraft(member.id, "comp", event.target.value)}
+                        onBlur={(event) => void commit(member, "comp", event.currentTarget.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") event.currentTarget.blur()
+                        }}
+                      />
+                      <span className="text-muted">{formatLeaveDays(member.comp)}</span>
+                    </span>
+                  </td>
+                  <td>
+                    <span className="inline-flex items-center gap-2">
+                      <input
+                        style={{ width: "5.5rem" }}
+                        inputMode="decimal"
+                        aria-label={`${member.name} 여름휴가`}
+                        value={member.summerDraft}
+                        disabled={savingKey === `${member.id}:summer`}
+                        onChange={(event) => updateDraft(member.id, "summer", event.target.value)}
+                        onBlur={(event) => void commit(member, "summer", event.currentTarget.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") event.currentTarget.blur()
+                        }}
+                      />
+                      <span className="text-muted">{formatLeaveDays(member.summer)}</span>
+                    </span>
                   </td>
                 </tr>
               ))}
@@ -200,11 +225,11 @@ export function LeaveAdminPage() {
         </div>
       ) : null}
 
-      <h2 className="mt-8 mb-3 text-lg font-semibold">변경 내역</h2>
-      {entries.length === 0 ? <Empty>휴가 원장 내역이 없습니다.</Empty> : null}
+      <h2 className="mt-5 mb-2 text-sm font-semibold">변경 내역</h2>
+      {entries.length === 0 ? <p className="text-xs text-muted">휴가 원장 내역이 없습니다.</p> : null}
       {entries.length > 0 ? (
-        <div className="ds-table">
-          <table>
+        <div className="ds-table is-compact max-w-3xl">
+          <table className="w-full text-left">
             <thead>
               <tr>
                 <th>구성원</th>
@@ -218,10 +243,10 @@ export function LeaveAdminPage() {
               {entries.map((entry) => (
                 <tr key={entry.id}>
                   <td>{oneName(entry.subject)}</td>
-                  <td>{entry.leave_type === "annual" ? "기본 연차" : "보상휴가"}</td>
+                  <td>{leaveTypeLabel(entry.leave_type)}</td>
                   <td className={entry.delta_minutes < 0 ? "text-danger" : "text-ok"}>
                     {entry.delta_minutes > 0 ? "+" : ""}
-                    {formatMinutes(entry.delta_minutes)}
+                    {formatLeaveDays(entry.delta_minutes)}
                   </td>
                   <td>{entry.reason}</td>
                   <td>{formatDateTime(entry.created_at)}</td>

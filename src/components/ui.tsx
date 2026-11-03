@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react"
+import { useEffect, type ButtonHTMLAttributes, type ReactNode } from "react"
 
 export function FullScreen({ title, children }: { title: string; children?: ReactNode }) {
   return (
@@ -61,10 +61,35 @@ export function Toast({ children }: { children: ReactNode }) {
   return <p className="ds-toast">{children}</p>
 }
 
-export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+export function Modal({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) {
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose()
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [onClose])
+
   return (
-    <label className="block text-sm">
-      <span className="mb-2 block font-medium">{label}</span>
+    <div className="fixed inset-0 z-50 grid place-items-center px-4 py-8">
+      <button type="button" className="absolute inset-0 bg-black/60" aria-label="닫기" onClick={onClose} />
+      <div role="dialog" aria-modal="true" aria-labelledby="modal-title" className="ds-card relative z-10 w-full max-w-lg p-5">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 id="modal-title" className="text-lg font-semibold">{title}</h2>
+          <button type="button" className="text-sm text-muted underline-offset-4 hover:underline" onClick={onClose}>
+            닫기
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+export function Field({ label, hint, children, compact = false }: { label: string; hint?: string; children: ReactNode; compact?: boolean }) {
+  return (
+    <label className="block min-w-0 text-sm">
+      <span className={compact ? "mb-1 block text-xs font-medium text-muted" : "mb-2 block font-medium"}>{label}</span>
       {children}
       {hint ? <span className="mt-2 block text-xs leading-5 text-muted">{hint}</span> : null}
     </label>

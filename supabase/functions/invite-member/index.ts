@@ -10,6 +10,7 @@ type InviteBody = {
   name?: string
   role?: string
   workplace_id?: string | null
+  job_title?: string | null
   employee_number?: string | null
   hired_at?: string | null
   initial_annual_days?: number
@@ -61,14 +62,16 @@ Deno.serve(async (req) => {
   const role = body.role === "admin" ? "admin" : "employee"
   const workplaceId = body.workplace_id || null
   const employeeNumber = body.employee_number?.trim() || null
+  const jobTitle = body.job_title?.trim() || null
   const hiredAt = body.hired_at || null
   const annualDays = Number(body.initial_annual_days ?? 0)
 
   if (!email.includes("@") || !name) {
     return json({ error: "이메일과 이름을 입력하세요." }, 400)
   }
-  if (!Number.isFinite(annualDays) || annualDays < 0 || annualDays > 100) {
-    return json({ error: "초기 연차는 0일에서 100일 사이로 입력하세요." }, 400)
+  const quarters = annualDays * 4
+  if (!Number.isFinite(annualDays) || annualDays < 0 || annualDays > 100 || Math.abs(quarters - Math.round(quarters)) > 1e-6) {
+    return json({ error: "초기 연차는 0일에서 100일 사이이며, 1일, 0.5일, 0.25일 단위로 입력하세요." }, 400)
   }
   if (workplaceId) {
     const { data: workplace, error: workplaceError } = await admin
@@ -113,6 +116,7 @@ Deno.serve(async (req) => {
     name,
     email,
     role,
+    job_title: jobTitle,
     employee_number: employeeNumber,
     hired_at: hiredAt,
   }

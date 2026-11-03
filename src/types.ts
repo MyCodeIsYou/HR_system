@@ -3,7 +3,7 @@ export type LatePolicy = "fine" | "annual_leave" | "none"
 export type FineMode = "flat" | "per_minute"
 export type LeaveDeductionMode = "exact_minutes" | "per_occurrence"
 export type EventType = "in" | "out"
-export type LeaveType = "annual" | "comp"
+export type LeaveType = "annual" | "comp" | "summer"
 export type AttendanceSource = "nfc" | "manual"
 
 export type Profile = {
@@ -13,6 +13,7 @@ export type Profile = {
   name: string
   email: string | null
   role: Role
+  job_title: string | null
   employee_number: string | null
   hired_at: string | null
   created_at: string

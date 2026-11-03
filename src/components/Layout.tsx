@@ -42,6 +42,9 @@ export function Layout() {
               <NavLink to="/admin/penalties" className={({ isActive }) => (isActive ? `${item} ${active}` : item)}>
                 지각
               </NavLink>
+              <NavLink to="/admin/annual-leave" className={({ isActive }) => (isActive ? `${item} ${active}` : item)}>
+                연차
+              </NavLink>
               <NavLink to="/admin/leaves" className={({ isActive }) => (isActive ? `${item} ${active}` : item)}>
                 휴가
               </NavLink>

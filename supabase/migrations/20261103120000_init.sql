@@ -49,6 +49,7 @@ create table public.profiles (
   name text not null,
   email text,
   role text not null default 'employee' check (role in ('admin', 'employee')),
+  job_title text,
   employee_number text,
   hired_at date,
   created_at timestamptz not null default now()
@@ -100,7 +101,7 @@ create table public.leave_ledger (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references public.organizations (id) on delete cascade,
   user_id uuid not null,
-  leave_type text not null check (leave_type in ('annual', 'comp')),
+  leave_type text not null check (leave_type in ('annual', 'comp', 'summer')),
   delta_minutes integer not null,
   reason text not null,
   ref_table text,
@@ -217,6 +218,9 @@ begin
   if new.employee_number is not null then
     new.employee_number := nullif(trim(new.employee_number), '');
   end if;
+  if new.job_title is not null then
+    new.job_title := nullif(trim(new.job_title), '');
+  end if;
 
   if new.role not in ('admin', 'employee') then
     raise exception '역할이 올바르지 않습니다';
@@ -252,6 +256,7 @@ begin
     new.organization_id := old.organization_id;
     new.workplace_id := old.workplace_id;
     new.employee_number := old.employee_number;
+    new.job_title := old.job_title;
     new.hired_at := old.hired_at;
     new.email := old.email;
     return new;
@@ -725,7 +730,7 @@ begin
   if not public.is_admin() then
     raise exception '관리자만 휴가를 조정할 수 있습니다';
   end if;
-  if p_leave_type not in ('annual', 'comp') then
+  if p_leave_type not in ('annual', 'comp', 'summer') then
     raise exception '휴가 종류가 올바르지 않습니다';
   end if;
   if p_delta_minutes is null or p_delta_minutes = 0 then

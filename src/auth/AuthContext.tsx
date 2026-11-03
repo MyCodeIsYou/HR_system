@@ -16,7 +16,7 @@ type AuthValue = {
 
 const AuthContext = createContext<AuthValue | null>(null)
 
-const profileColumns = "id, organization_id, workplace_id, name, email, role, employee_number, hired_at, created_at"
+const profileColumns = "id, organization_id, workplace_id, name, email, role, job_title, employee_number, hired_at, created_at"
 
 async function loadAccount(userId: string): Promise<{ profile: Profile | null; organization: Organization | null }> {
   let profile: Profile | null = null

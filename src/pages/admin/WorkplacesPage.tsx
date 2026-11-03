@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react"
 import { Link } from "react-router-dom"
 import { useAuth } from "../../auth/AuthContext.tsx"
-import { Alert, Button, Card, Empty, Field, Page } from "../../components/ui.tsx"
+import { Alert, Button, Empty, Field, Modal, Page } from "../../components/ui.tsx"
 import { clockLabel, humanError, latePolicyLabel } from "../../lib/format.ts"
 import { supabase } from "../../lib/supabase.ts"
 import { workplaceColumns, type Workplace } from "../../types.ts"
@@ -12,6 +12,7 @@ export function WorkplacesPage() {
   const [name, setName] = useState(organization?.name ?? "")
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+  const [renameOpen, setRenameOpen] = useState(false)
 
   useEffect(() => {
     setName(organization?.name ?? "")
@@ -44,6 +45,7 @@ export function WorkplacesPage() {
       setError(updateError.message)
       return
     }
+    setRenameOpen(false)
     await refresh()
   }
 
@@ -52,42 +54,53 @@ export function WorkplacesPage() {
       title="사업장"
       description="사업장마다 NFC 주소가 다릅니다. 카드에는 그 주소만 적습니다."
       action={
-        <Link to="/admin/workplaces/new" className="ds-button">
-          사업장 추가
-        </Link>
+        <div className="flex gap-2">
+          <Button variant="ghost" onClick={() => setRenameOpen(true)}>조직 이름</Button>
+          <Link to="/admin/workplaces/new" className="ds-button">사업장 추가</Link>
+        </div>
       }
     >
-      <Card className="mb-4">
-        <form className="flex flex-wrap items-end gap-3" onSubmit={(event) => void rename(event)}>
-          <div className="min-w-64 flex-1">
-            <Field label="조직 이름">
+      {error && !renameOpen ? <div className="mb-4"><Alert>{humanError(new Error(error))}</Alert></div> : null}
+      {renameOpen ? (
+        <Modal title="조직 이름" onClose={() => setRenameOpen(false)}>
+          {error ? <div className="mb-3"><Alert>{humanError(new Error(error))}</Alert></div> : null}
+          <form className="grid gap-3" onSubmit={(event) => void rename(event)}>
+            <Field compact label="조직 이름">
               <input value={name} onChange={(event) => setName(event.target.value)} required />
             </Field>
-          </div>
-          <Button type="submit" disabled={pending}>
-            이름 저장
-          </Button>
-        </form>
-      </Card>
-      {error ? <div className="mb-4"><Alert>{humanError(new Error(error))}</Alert></div> : null}
+            <Button type="submit" disabled={pending}>{pending ? "저장 중" : "이름 저장"}</Button>
+          </form>
+        </Modal>
+      ) : null}
       {rows.length === 0 ? <Empty>등록된 사업장이 없습니다.</Empty> : null}
-      <div className="grid gap-3">
-        {rows.map((workplace) => (
-          <Link key={workplace.id} to={`/admin/workplaces/${workplace.id}`} className="block">
-            <Card>
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h2 className="text-lg font-semibold">{workplace.name}</h2>
-                  <p className="mt-1 text-sm text-muted">{workplace.address || "주소 없음"}</p>
-                </div>
-                <p className="text-sm text-muted">
-                  {clockLabel(workplace.work_start)}–{clockLabel(workplace.work_end)} · {latePolicyLabel(workplace.late_policy)}
-                </p>
-              </div>
-            </Card>
-          </Link>
-        ))}
-      </div>
+      {rows.length > 0 ? (
+        <div className="ds-table is-compact max-w-3xl">
+          <table className="w-full text-left">
+            <thead className="text-muted">
+              <tr>
+                <th className="font-medium">이름</th>
+                <th className="font-medium">주소</th>
+                <th className="font-medium">근무</th>
+                <th className="font-medium">지각</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((workplace) => (
+                <tr key={workplace.id}>
+                  <td>
+                    <Link to={`/admin/workplaces/${workplace.id}`} className="font-medium text-accent underline-offset-4 hover:underline">
+                      {workplace.name}
+                    </Link>
+                  </td>
+                  <td>{workplace.address || "주소 없음"}</td>
+                  <td className="tabular-nums">{clockLabel(workplace.work_start)}–{clockLabel(workplace.work_end)}</td>
+                  <td>{latePolicyLabel(workplace.late_policy)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
     </Page>
   )
 }
