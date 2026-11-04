@@ -47,4 +47,4 @@ max_frequency = "1m0s"
 otp_length = 8
 
 [functions.invite-member]
-verify_jwt = true
+verify_jwt = false

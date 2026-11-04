@@ -10,10 +10,15 @@ function asResult(value: unknown): AttendanceResult {
 
 export async function readFunctionError(error: unknown): Promise<string> {
   if (error instanceof FunctionsHttpError) {
+    const status = error.context.status
     try {
-      const payload = (await error.context.json()) as { error?: string }
+      const payload = (await error.context.json()) as { error?: string; message?: string; msg?: string }
       if (payload.error) return payload.error
+      if (status === 401) return "로그인 상태가 확인되지 않습니다. 다시 로그인한 뒤 초대해 주세요."
+      if (payload.message) return payload.message
+      if (payload.msg) return payload.msg
     } catch {
+      if (status === 401) return "로그인 상태가 확인되지 않습니다. 다시 로그인한 뒤 초대해 주세요."
       return "초대에 실패했습니다. invite-member 함수 배포를 확인해 주세요."
     }
   }
@@ -119,7 +124,18 @@ export async function inviteMember(body: {
   hired_at: string | null
   initial_annual_days: number
 }): Promise<void> {
-  const { data, error } = await supabase.functions.invoke("invite-member", { body })
+  const { data: sessionData } = await supabase.auth.getSession()
+  let accessToken = sessionData.session?.access_token ?? null
+  const expiresAt = sessionData.session?.expires_at ?? 0
+  if (!accessToken || expiresAt * 1000 < Date.now() + 60_000) {
+    const { data: refreshed } = await supabase.auth.refreshSession()
+    accessToken = refreshed.session?.access_token ?? accessToken
+  }
+  if (!accessToken) throw new Error("로그인이 필요합니다. 다시 로그인한 뒤 초대해 주세요.")
+  const { data, error } = await supabase.functions.invoke("invite-member", {
+    body,
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
   if (error) throw new Error(await readFunctionError(error))
   if (data && typeof data === "object" && "error" in data && data.error) {
     throw new Error(String(data.error))

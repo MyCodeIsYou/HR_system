@@ -35,16 +35,13 @@ Deno.serve(async (req) => {
     return json({ error: "서버 설정이 없습니다." }, 500)
   }
 
-  const authorization = req.headers.get("Authorization")
-  if (!authorization) return json({ error: "로그인이 필요합니다." }, 401)
-
-  const userClient = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: authorization } },
-  })
-  const { data: userData, error: userError } = await userClient.auth.getUser()
-  if (userError || !userData.user) return json({ error: "로그인이 필요합니다." }, 401)
+  const authorization = req.headers.get("Authorization") ?? ""
+  const accessToken = authorization.replace(/^Bearer\s+/i, "").trim()
+  if (!accessToken || accessToken === anonKey) return json({ error: "로그인이 필요합니다." }, 401)
 
   const admin = createClient(supabaseUrl, serviceKey)
+  const { data: userData, error: userError } = await admin.auth.getUser(accessToken)
+  if (userError || !userData.user) return json({ error: "로그인이 필요합니다. 다시 로그인한 뒤 초대해 주세요." }, 401)
   const { data: caller, error: callerError } = await admin
     .from("profiles")
     .select("role, organization_id")
