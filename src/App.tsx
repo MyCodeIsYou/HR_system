@@ -2,7 +2,7 @@ import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom"
 import { useAuth } from "./auth/AuthContext.tsx"
 import { Layout } from "./components/Layout.tsx"
 import { FullScreen } from "./components/ui.tsx"
-import { CheckinPage } from "./pages/CheckinPage.tsx"
+import { CheckinPage, CheckinResultPage } from "./pages/CheckinPage.tsx"
 import { HomePage } from "./pages/HomePage.tsx"
 import { LoginPage } from "./pages/LoginPage.tsx"
 import { SetupPage } from "./pages/SetupPage.tsx"
@@ -66,6 +66,7 @@ export function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/setup" element={<SetupPage />} />
+      <Route path="/c/result" element={<CheckinResultPage />} />
       <Route path="/c/:token" element={<CheckinPage />} />
       <Route element={<RequireAuth />}>
         <Route path="/" element={<HomePage />} />

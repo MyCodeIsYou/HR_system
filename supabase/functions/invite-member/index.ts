@@ -95,10 +95,10 @@ Deno.serve(async (req) => {
 
   let userId = existing?.id
   if (!userId) {
-    const origin = req.headers.get("origin")
+    const appUrl = (Deno.env.get("APP_URL") ?? "https://mycodeisyou.github.io/HR_system").replace(/\/$/, "")
     const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
       data: { name },
-      redirectTo: origin ? `${origin}/login` : undefined,
+      redirectTo: `${appUrl}/login`,
     })
     userId = invited.user?.id
     if (inviteError || !userId) {
