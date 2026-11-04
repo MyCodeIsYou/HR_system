@@ -179,9 +179,17 @@ export function MembersPage() {
       {error && !inviteOpen && !current ? <div className="mb-4"><Alert>{error}</Alert></div> : null}
       {message ? <div className="mb-4"><Toast>{message}</Toast></div> : null}
       {inviteOpen ? (
-        <Modal title="초대" onClose={() => setInviteOpen(false)}>
+        <Modal
+          title="초대"
+          onClose={() => setInviteOpen(false)}
+          footer={
+            <Button type="submit" form="invite-member" className="w-full" disabled={pending}>
+              {pending ? "보내는 중" : "초대 보내기"}
+            </Button>
+          }
+        >
           {error ? <div className="mb-3"><Alert>{error}</Alert></div> : null}
-          <form className="grid gap-3 sm:grid-cols-2" onSubmit={(event) => void onInvite(event)}>
+          <form id="invite-member" className="grid gap-3 sm:grid-cols-2" onSubmit={(event) => void onInvite(event)}>
             <Field compact label="이메일">
               <input type="email" value={invite.email} onChange={(event) => setInvite({ ...invite, email: event.target.value })} required />
             </Field>
@@ -219,9 +227,6 @@ export function MembersPage() {
                 required
               />
             </Field>
-            <div className="flex items-end">
-              <Button type="submit" disabled={pending}>{pending ? "보내는 중" : "초대 보내기"}</Button>
-            </div>
           </form>
         </Modal>
       ) : null}

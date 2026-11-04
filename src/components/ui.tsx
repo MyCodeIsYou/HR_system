@@ -61,26 +61,47 @@ export function Toast({ children }: { children: ReactNode }) {
   return <p className="ds-toast">{children}</p>
 }
 
-export function Modal({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) {
+export function Modal({
+  title,
+  children,
+  onClose,
+  footer,
+}: {
+  title: string
+  children: ReactNode
+  onClose: () => void
+  footer?: ReactNode
+}) {
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       if (event.key === "Escape") onClose()
     }
+    const previous = document.body.style.overflow
+    document.body.style.overflow = "hidden"
     window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
+    return () => {
+      document.body.style.overflow = previous
+      window.removeEventListener("keydown", onKey)
+    }
   }, [onClose])
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center px-4 py-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6">
       <button type="button" className="absolute inset-0 bg-black/60" aria-label="닫기" onClick={onClose} />
-      <div role="dialog" aria-modal="true" aria-labelledby="modal-title" className="ds-card relative z-10 w-full max-w-lg p-5">
-        <div className="mb-4 flex items-center justify-between gap-3">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
+        className="ds-card relative z-10 flex w-full max-w-lg flex-col overflow-hidden p-5 max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-3rem)]"
+      >
+        <div className="mb-4 flex shrink-0 items-center justify-between gap-3">
           <h2 id="modal-title" className="text-lg font-semibold">{title}</h2>
           <button type="button" className="text-sm text-muted underline-offset-4 hover:underline" onClick={onClose}>
             닫기
           </button>
         </div>
-        {children}
+        <div className="min-h-0 overflow-y-auto">{children}</div>
+        {footer ? <div className="shrink-0 pt-3">{footer}</div> : null}
       </div>
     </div>
   )
