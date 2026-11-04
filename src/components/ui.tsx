@@ -17,7 +17,7 @@ export function Page({
   description,
   action,
   children,
-  menuTitle = false,
+  menuTitle = true,
 }: {
   title: string
   description?: string
@@ -27,13 +27,11 @@ export function Page({
 }) {
   return (
     <section className={`mx-auto w-full max-w-5xl px-4 py-6 sm:px-8${menuTitle ? " ds-home-page" : ""}`}>
-      <div className={`mb-6 flex flex-wrap items-end justify-between gap-4${menuTitle ? " ds-home-title" : ""}`}>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-          {description ? <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">{description}</p> : null}
-        </div>
+      <div className={`flex flex-wrap items-end justify-between gap-3${description ? " mb-2" : " mb-6"}${menuTitle ? " ds-home-title" : ""}`}>
+        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
         {action}
       </div>
+      {description ? <p className="ds-page-lead">{description}</p> : null}
       {children}
     </section>
   )

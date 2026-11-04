@@ -220,7 +220,7 @@ export function LeaveRequestPage() {
             ["여름휴가", "summer", "ds-tone-gold"],
           ] as const
         ).map(([label, type, tone]) => (
-          <li key={type} className={`ds-card ${tone} px-2 py-2 text-center`}>
+          <li key={type} className={`ds-card ds-leave-card ${tone} px-2 py-2 text-center`}>
             <p className="text-xs font-semibold">{label}</p>
             <p className="mt-1 text-sm font-semibold tabular-nums">{formatLeaveDays(balanceOf(balances, type))}</p>
           </li>

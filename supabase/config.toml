@@ -48,3 +48,6 @@ otp_length = 8
 
 [functions.invite-member]
 verify_jwt = false
+
+[functions.weekly-leave-digest]
+verify_jwt = false

@@ -27,6 +27,7 @@ export type Organization = {
   id: string
   name: string
   leave_entry_mode: LeaveEntryMode
+  leave_digest_emails: string[]
 }
 
 export type Workplace = {

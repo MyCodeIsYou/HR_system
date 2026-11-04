@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, type FormEvent } from "react"
 import { useAuth } from "../../auth/AuthContext.tsx"
 import { Alert, Button, Field, Page, Toast } from "../../components/ui.tsx"
 import { LeaveKindsSection } from "./LeaveKindsSection.tsx"
@@ -32,10 +32,13 @@ export function LeaveAdminPage() {
   const [message, setMessage] = useState<string | null>(null)
   const [savingKey, setSavingKey] = useState<string | null>(null)
   const [mode, setMode] = useState<LeaveEntryMode>(organization?.leave_entry_mode ?? "request")
+  const [digestEmails, setDigestEmails] = useState<string[]>(organization?.leave_digest_emails ?? [])
+  const [digestDraft, setDigestDraft] = useState("")
 
   useEffect(() => {
     setMode(organization?.leave_entry_mode ?? "request")
-  }, [organization?.leave_entry_mode])
+    setDigestEmails(organization?.leave_digest_emails ?? [])
+  }, [organization?.leave_entry_mode, organization?.leave_digest_emails])
 
   async function load() {
     const [profileResult, balanceResult, ledgerResult, requestResult] = await Promise.all([
@@ -165,6 +168,41 @@ export function LeaveAdminPage() {
     setMessage(next === "register" ? "등록형으로 저장했습니다." : "신청형으로 저장했습니다.")
   }
 
+  async function saveDigest(next: string[]) {
+    if (!organization) return
+    const previous = digestEmails
+    setDigestEmails(next)
+    setError(null)
+    setMessage(null)
+    const { error: updateError } = await supabase.from("organizations").update({ leave_digest_emails: next }).eq("id", organization.id)
+    if (updateError) {
+      setDigestEmails(previous)
+      setError(humanError(new Error(updateError.message)))
+      return
+    }
+    await refresh()
+    setMessage("휴가 일정 메일을 받을 주소를 저장했습니다.")
+  }
+
+  async function addDigest(event: FormEvent) {
+    event.preventDefault()
+    const email = digestDraft.trim().toLowerCase()
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      setError("메일 주소를 확인해 주세요.")
+      return
+    }
+    if (digestEmails.includes(email)) {
+      setError("이미 있는 메일 주소입니다.")
+      return
+    }
+    if (digestEmails.length >= 20) {
+      setError("메일 주소는 20개까지 넣을 수 있습니다.")
+      return
+    }
+    setDigestDraft("")
+    await saveDigest([...digestEmails, email])
+  }
+
   async function review(id: string, approve: boolean) {
     setSavingKey(id)
     setError(null)
@@ -207,6 +245,35 @@ export function LeaveAdminPage() {
           </select>
         </Field>
       </div>
+      <form className="mb-6 max-w-xl" onSubmit={(event) => void addDigest(event)}>
+        <Field compact label="주간 휴가 메일" hint="매주 월요일 오전 9시에 이번 주 휴가 일정을 아래 주소로 보냅니다. 비어 있으면 보내지 않습니다.">
+          <div className="flex gap-2">
+            <input
+              type="email"
+              value={digestDraft}
+              onChange={(event) => setDigestDraft(event.target.value)}
+              placeholder="name@company.com"
+              aria-label="휴가 일정 메일을 받을 주소"
+              style={{ width: "auto", flex: "1 1 auto", minWidth: 0 }}
+            />
+            <Button type="submit">추가</Button>
+          </div>
+        </Field>
+        {digestEmails.length > 0 ? (
+          <ul className="mt-3 grid gap-2">
+            {digestEmails.map((email) => (
+              <li key={email} className="flex items-center justify-between gap-3 border border-line px-3 py-2 text-sm" style={{ borderRadius: 4 }}>
+                <span className="min-w-0 truncate">{email}</span>
+                <Button variant="ghost" onClick={() => void saveDigest(digestEmails.filter((item) => item !== email))}>
+                  삭제
+                </Button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-3 text-xs text-muted">받는 주소가 없습니다.</p>
+        )}
+      </form>
       <LeaveKindsSection />
       {mode === "request" || requests.length > 0 ? <h2 className="mb-2 text-sm font-semibold">휴가 신청</h2> : null}
       {mode === "request" || requests.length > 0 ? (
