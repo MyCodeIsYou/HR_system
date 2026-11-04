@@ -2,6 +2,27 @@ import { createClient } from "@supabase/supabase-js"
 
 const url = import.meta.env.VITE_SUPABASE_URL
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const passwordSetupKey = "hr-password-setup"
+
+function capturePasswordSetup() {
+  if (typeof window === "undefined") return
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""))
+  const query = new URLSearchParams(window.location.search)
+  const type = hash.get("type") ?? query.get("type")
+  if (type === "invite" || type === "recovery") sessionStorage.setItem(passwordSetupKey, type)
+}
+
+capturePasswordSetup()
+
+export function pendingPasswordSetup(): "invite" | "recovery" | null {
+  if (typeof window === "undefined") return null
+  const type = sessionStorage.getItem(passwordSetupKey)
+  return type === "invite" || type === "recovery" ? type : null
+}
+
+export function clearPasswordSetup() {
+  sessionStorage.removeItem(passwordSetupKey)
+}
 
 export const isSupabaseConfigured = Boolean(url && anonKey)
 

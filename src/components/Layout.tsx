@@ -8,6 +8,7 @@ const active = "is-active"
 
 const links = [
   { to: "/", label: "내 근태", end: true, admin: false },
+  { to: "/leave", label: "내 휴가", end: false, admin: false },
   { to: "/admin/workplaces", label: "사업장", admin: true },
   { to: "/admin/members", label: "구성원", admin: true },
   { to: "/admin/attendance", label: "출퇴근", admin: true },
@@ -18,8 +19,9 @@ const links = [
 ]
 
 export function Layout() {
-  const { profile, organization } = useAuth()
+  const { profile, organization, setTheme } = useAuth()
   const admin = profile?.role === "admin"
+  const theme = profile?.ui_theme === "soft" ? "soft" : "night"
   const [open, setOpen] = useState(false)
   const menu = links.filter((link) => !link.admin || admin)
 
@@ -44,6 +46,14 @@ export function Layout() {
             </NavLink>
           ))}
         </nav>
+        <div className="ds-theme-switch" role="group" aria-label="테마">
+          <button type="button" aria-pressed={theme === "night"} className={theme === "night" ? "is-active" : ""} onClick={() => void setTheme("night")}>
+            밤
+          </button>
+          <button type="button" aria-pressed={theme === "soft"} className={theme === "soft" ? "is-active" : ""} onClick={() => void setTheme("soft")}>
+            소프트
+          </button>
+        </div>
         <div className="ds-side-user">
           <p className="min-w-0 truncate text-sm text-muted">
             {profile?.name}

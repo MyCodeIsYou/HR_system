@@ -6,6 +6,9 @@ import { AuthProvider } from "./auth/AuthContext.tsx"
 import cafe24 from "./assets/fonts/Cafe24Ssurround.woff?url"
 import "./index.css"
 
+const storedTheme = localStorage.getItem("hr-theme")
+if (storedTheme === "soft" || storedTheme === "night") document.documentElement.dataset.theme = storedTheme
+
 const rounded = document.createElement("style")
 rounded.textContent = `@font-face{font-family:"Cafe24 Ssurround";src:url("${cafe24}") format("woff");font-weight:400;font-style:normal;font-display:swap}@font-face{font-family:"Cafe24 Ssurround";src:url("${cafe24}") format("woff");font-weight:700;font-style:normal;font-display:swap}`
 document.head.appendChild(rounded)

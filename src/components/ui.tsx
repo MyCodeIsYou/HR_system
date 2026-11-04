@@ -17,15 +17,17 @@ export function Page({
   description,
   action,
   children,
+  menuTitle = false,
 }: {
   title: string
   description?: string
   action?: ReactNode
   children: ReactNode
+  menuTitle?: boolean
 }) {
   return (
-    <section className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-8">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <section className={`mx-auto w-full max-w-5xl px-4 py-6 sm:px-8${menuTitle ? " ds-home-page" : ""}`}>
+      <div className={`mb-6 flex flex-wrap items-end justify-between gap-4${menuTitle ? " ds-home-title" : ""}`}>
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
           {description ? <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">{description}</p> : null}

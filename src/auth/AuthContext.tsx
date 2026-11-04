@@ -1,6 +1,6 @@
 import type { Session } from "@supabase/supabase-js"
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
-import type { Organization, Profile } from "../types.ts"
+import type { Organization, Profile, UiTheme } from "../types.ts"
 import { supabase, isSupabaseConfigured } from "../lib/supabase.ts"
 
 type AuthValue = {
@@ -12,11 +12,17 @@ type AuthValue = {
   profileError: string | null
   refresh: () => Promise<void>
   signOut: () => Promise<void>
+  setTheme: (theme: UiTheme) => Promise<void>
 }
 
 const AuthContext = createContext<AuthValue | null>(null)
 
-const profileColumns = "id, organization_id, workplace_id, name, email, role, job_title, employee_number, hired_at, created_at"
+const profileColumns = "id, organization_id, workplace_id, name, email, role, job_title, employee_number, hired_at, ui_theme, created_at"
+
+export function applyTheme(theme: UiTheme) {
+  document.documentElement.dataset.theme = theme
+  localStorage.setItem("hr-theme", theme)
+}
 
 async function loadAccount(userId: string): Promise<{ profile: Profile | null; organization: Organization | null }> {
   let profile: Profile | null = null
@@ -31,7 +37,7 @@ async function loadAccount(userId: string): Promise<{ profile: Profile | null; o
   if (!profile?.organization_id) return { profile, organization: null }
   const { data, error } = await supabase
     .from("organizations")
-    .select("id, name")
+    .select("id, name, leave_entry_mode")
     .eq("id", profile.organization_id)
     .maybeSingle()
   if (error) throw new Error(error.message)
@@ -88,6 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!active) return
         setProfile(account.profile)
         setOrganization(account.organization)
+        if (account.profile?.ui_theme) applyTheme(account.profile.ui_theme)
         setProfileError(null)
         setProfileReady(true)
       })
@@ -107,6 +114,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut()
   }, [])
 
+  const setTheme = useCallback(
+    async (theme: UiTheme) => {
+      const previous = profile?.ui_theme ?? "night"
+      applyTheme(theme)
+      if (!profile) return
+      const { error } = await supabase.from("profiles").update({ ui_theme: theme }).eq("id", profile.id)
+      if (error) {
+        applyTheme(previous)
+        return
+      }
+      setProfile({ ...profile, ui_theme: theme })
+    },
+    [profile],
+  )
+
   const value = useMemo<AuthValue>(
     () => ({
       ready: ready && profileReady,
@@ -117,8 +139,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profileError,
       refresh,
       signOut,
+      setTheme,
     }),
-    [ready, profileReady, session, profile, organization, profileError, refresh, signOut],
+    [ready, profileReady, session, profile, organization, profileError, refresh, signOut, setTheme],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

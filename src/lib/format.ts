@@ -100,6 +100,11 @@ export function leaveTypeLabel(type: LeaveType): string {
   return "여름휴가"
 }
 
+export function deductLabel(type: LeaveType | null): string {
+  if (!type) return "차감 없음"
+  return leaveTypeLabel(type)
+}
+
 export function formatLeaveDays(minutes: number): string {
   return `${leaveDayValue(minutes)}일`
 }

@@ -107,7 +107,7 @@ export function MembersPage() {
         hired_at: invite.hired_at || null,
         initial_annual_days: parsed.minutes / 480,
       })
-      setMessage("초대 메일을 보냈습니다.")
+      setMessage("초대 메일을 보냈습니다. 초기 비밀번호는 없고, 메일 링크에서 본인이 정합니다.")
       setInvite({ ...invite, email: "", name: "", job_title: "", employee_number: "" })
       setInviteOpen(false)
       await load()
@@ -189,6 +189,7 @@ export function MembersPage() {
           }
         >
           {error ? <div className="mb-3"><Alert>{error}</Alert></div> : null}
+          <p className="mb-3 text-sm leading-6 text-muted">초기 비밀번호는 없습니다. 초대 메일의 링크에서 본인이 정합니다.</p>
           <form id="invite-member" className="grid gap-3 sm:grid-cols-2" onSubmit={(event) => void onInvite(event)}>
             <Field compact label="이메일">
               <input type="email" value={invite.email} onChange={(event) => setInvite({ ...invite, email: event.target.value })} required />

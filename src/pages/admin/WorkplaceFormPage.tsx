@@ -18,6 +18,10 @@ type Draft = {
   late_policy: LatePolicy
   fine_mode: FineMode
   fine_amount: string
+  fine_initial_minutes: string
+  fine_initial_amount: string
+  fine_step_minutes: string
+  fine_step_amount: string
   leave_deduction_mode: LeaveDeductionMode
   leave_deduction_minutes: string
   overtime_start: string
@@ -35,6 +39,10 @@ const emptyDraft: Draft = {
   late_policy: "none",
   fine_mode: "flat",
   fine_amount: "0",
+  fine_initial_minutes: "10",
+  fine_initial_amount: "5000",
+  fine_step_minutes: "10",
+  fine_step_amount: "2000",
   leave_deduction_mode: "exact_minutes",
   leave_deduction_minutes: "60",
   overtime_start: "18:00",
@@ -53,6 +61,10 @@ function fromWorkplace(workplace: Workplace): Draft {
     late_policy: workplace.late_policy,
     fine_mode: workplace.fine_mode,
     fine_amount: String(workplace.fine_amount),
+    fine_initial_minutes: String(workplace.fine_initial_minutes),
+    fine_initial_amount: String(workplace.fine_initial_amount),
+    fine_step_minutes: String(workplace.fine_step_minutes),
+    fine_step_amount: String(workplace.fine_step_amount),
     leave_deduction_mode: workplace.leave_deduction_mode,
     leave_deduction_minutes: String(workplace.leave_deduction_minutes),
     overtime_start: clockLabel(workplace.overtime_start),
@@ -127,6 +139,10 @@ export function WorkplaceFormPage() {
         late_policy: draft.late_policy,
         fine_mode: draft.fine_mode,
         fine_amount: integer(draft.fine_amount, "벌금", 0),
+        fine_initial_minutes: integer(draft.fine_initial_minutes, "처음 구간", 1),
+        fine_initial_amount: integer(draft.fine_initial_amount, "처음 벌금", 0),
+        fine_step_minutes: integer(draft.fine_step_minutes, "이후 구간", 1),
+        fine_step_amount: integer(draft.fine_step_amount, "추가 벌금", 0),
         leave_deduction_mode: draft.leave_deduction_mode,
         leave_deduction_minutes: integer(draft.leave_deduction_minutes, "1회 차감 분", 0),
         overtime_start: draft.overtime_start,
@@ -136,6 +152,7 @@ export function WorkplaceFormPage() {
       if (workplaceId) {
         const { error: updateError } = await supabase.from("workplaces").update(payload).eq("id", workplaceId)
         if (updateError) throw updateError
+        navigate("/admin/workplaces")
       } else {
         const { data, error: insertError } = await supabase.from("workplaces").insert(payload).select("id").single()
         if (insertError) throw insertError
@@ -222,11 +239,29 @@ export function WorkplaceFormPage() {
                 <select value={draft.fine_mode} onChange={(event) => patch("fine_mode", event.target.value as FineMode)}>
                   <option value="flat">지각 1회 정액</option>
                   <option value="per_minute">분당</option>
+                  <option value="step">구간 가산</option>
                 </select>
               </Field>
-              <Field label="벌금(원)">
-                <input inputMode="numeric" value={draft.fine_amount} onChange={(event) => patch("fine_amount", event.target.value)} required />
-              </Field>
+              {draft.fine_mode === "step" ? (
+                <>
+                  <Field label="처음 구간(분)" hint="이 시간까지는 처음 벌금만 부과됩니다.">
+                    <input inputMode="numeric" value={draft.fine_initial_minutes} onChange={(event) => patch("fine_initial_minutes", event.target.value)} required />
+                  </Field>
+                  <Field label="처음 벌금(원)">
+                    <input inputMode="numeric" value={draft.fine_initial_amount} onChange={(event) => patch("fine_initial_amount", event.target.value)} required />
+                  </Field>
+                  <Field label="이후 구간(분)" hint="처음 구간이 지난 뒤, 이 시간마다 추가 벌금이 계속 더해집니다.">
+                    <input inputMode="numeric" value={draft.fine_step_minutes} onChange={(event) => patch("fine_step_minutes", event.target.value)} required />
+                  </Field>
+                  <Field label="추가 벌금(원)">
+                    <input inputMode="numeric" value={draft.fine_step_amount} onChange={(event) => patch("fine_step_amount", event.target.value)} required />
+                  </Field>
+                </>
+              ) : (
+                <Field label={draft.fine_mode === "per_minute" ? "분당 벌금(원)" : "1회 벌금(원)"}>
+                  <input inputMode="numeric" value={draft.fine_amount} onChange={(event) => patch("fine_amount", event.target.value)} required />
+                </Field>
+              )}
             </>
           ) : null}
           {draft.late_policy === "annual_leave" ? (

@@ -4,6 +4,7 @@ import { Layout } from "./components/Layout.tsx"
 import { FullScreen } from "./components/ui.tsx"
 import { CheckinPage, CheckinResultPage } from "./pages/CheckinPage.tsx"
 import { HomePage } from "./pages/HomePage.tsx"
+import { LeaveRequestPage } from "./pages/LeaveRequestPage.tsx"
 import { LoginPage } from "./pages/LoginPage.tsx"
 import { SetupPage } from "./pages/SetupPage.tsx"
 import { AnnualLeavePage } from "./pages/admin/AnnualLeavePage.tsx"
@@ -70,6 +71,7 @@ export function App() {
       <Route path="/c/:token" element={<CheckinPage />} />
       <Route element={<RequireAuth />}>
         <Route path="/" element={<HomePage />} />
+        <Route path="/leave" element={<LeaveRequestPage />} />
         <Route element={<RequireAdmin />}>
           <Route path="/admin/workplaces" element={<WorkplacesPage />} />
           <Route path="/admin/workplaces/new" element={<WorkplaceFormPage />} />

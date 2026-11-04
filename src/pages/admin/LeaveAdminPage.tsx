@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react"
-import { Alert, Page, Toast } from "../../components/ui.tsx"
-import { adjustLeave } from "../../lib/api.ts"
-import { formatDateTime, formatLeaveDays, humanError, leaveDayValue, leaveTypeLabel, oneName, parseLeaveDays } from "../../lib/format.ts"
+import { useAuth } from "../../auth/AuthContext.tsx"
+import { Alert, Button, Field, Page, Toast } from "../../components/ui.tsx"
+import { LeaveKindsSection } from "./LeaveKindsSection.tsx"
+import { adjustLeave, reviewLeaveRequest } from "../../lib/api.ts"
+import { formatDate, formatDateTime, formatLeaveDays, humanError, leaveDayValue, leaveTypeLabel, oneName, parseLeaveDays } from "../../lib/format.ts"
 import { supabase } from "../../lib/supabase.ts"
-import type { LeaveBalance, LeaveLedgerEntry, LeaveType, Profile } from "../../types.ts"
+import type { LeaveBalance, LeaveEntryMode, LeaveLedgerEntry, LeaveRequest, LeaveType, Profile } from "../../types.ts"
 
 type MemberLeave = {
   id: string
@@ -22,14 +24,21 @@ function daysLabel(minutes: number): string {
 }
 
 export function LeaveAdminPage() {
+  const { organization, refresh } = useAuth()
   const [members, setMembers] = useState<MemberLeave[]>([])
   const [entries, setEntries] = useState<LeaveLedgerEntry[]>([])
+  const [requests, setRequests] = useState<LeaveRequest[]>([])
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [savingKey, setSavingKey] = useState<string | null>(null)
+  const [mode, setMode] = useState<LeaveEntryMode>(organization?.leave_entry_mode ?? "request")
+
+  useEffect(() => {
+    setMode(organization?.leave_entry_mode ?? "request")
+  }, [organization?.leave_entry_mode])
 
   async function load() {
-    const [profileResult, balanceResult, ledgerResult] = await Promise.all([
+    const [profileResult, balanceResult, ledgerResult, requestResult] = await Promise.all([
       supabase.from("profiles").select("id, name, role").order("name"),
       supabase.from("leave_balance_sums").select("user_id, leave_type, balance_minutes"),
       supabase
@@ -37,10 +46,16 @@ export function LeaveAdminPage() {
         .select("id, user_id, leave_type, delta_minutes, reason, work_date, created_at, subject:profiles!leave_ledger_user_id_fkey(name)")
         .order("created_at", { ascending: false })
         .limit(40),
+      supabase
+        .from("leave_requests")
+        .select("id, user_id, leave_type, kind_name, work_date, minutes, status, note, subject:profiles!leave_requests_user_id_fkey(name)")
+        .eq("status", "pending")
+        .order("work_date"),
     ])
     if (profileResult.error) throw profileResult.error
     if (balanceResult.error) throw balanceResult.error
     if (ledgerResult.error) throw ledgerResult.error
+    if (requestResult.error) throw requestResult.error
     const balances = (balanceResult.data ?? []) as LeaveBalance[]
     setMembers(
       ((profileResult.data ?? []) as Pick<Profile, "id" | "name" | "role">[]).map((member) => {
@@ -61,6 +76,7 @@ export function LeaveAdminPage() {
       }),
     )
     setEntries((ledgerResult.data ?? []) as LeaveLedgerEntry[])
+    setRequests((requestResult.data ?? []) as LeaveRequest[])
   }
 
   useEffect(() => {
@@ -133,6 +149,37 @@ export function LeaveAdminPage() {
     }
   }
 
+  async function saveMode(next: LeaveEntryMode) {
+    if (!organization) return
+    const previous = mode
+    setMode(next)
+    setError(null)
+    setMessage(null)
+    const { error: updateError } = await supabase.from("organizations").update({ leave_entry_mode: next }).eq("id", organization.id)
+    if (updateError) {
+      setMode(previous)
+      setError(humanError(new Error(updateError.message)))
+      return
+    }
+    await refresh()
+    setMessage(next === "register" ? "등록형으로 저장했습니다." : "신청형으로 저장했습니다.")
+  }
+
+  async function review(id: string, approve: boolean) {
+    setSavingKey(id)
+    setError(null)
+    setMessage(null)
+    try {
+      await reviewLeaveRequest(id, approve)
+      setMessage(approve ? "휴가를 승인했습니다." : "휴가를 거절했습니다.")
+      await load()
+    } catch (caught) {
+      setError(humanError(caught))
+    } finally {
+      setSavingKey(null)
+    }
+  }
+
   return (
     <Page
       title="휴가"
@@ -146,6 +193,61 @@ export function LeaveAdminPage() {
       {message ? (
         <div className="mb-4">
           <Toast>{message}</Toast>
+        </div>
+      ) : null}
+      <div className="mb-6 max-w-xs">
+        <Field compact label="휴가 방식" hint={mode === "register" ? "구성원이 승인 없이 바로 등록합니다." : "구성원 신청을 관리자가 승인합니다."}>
+          <select
+            aria-label="휴가 방식"
+            value={mode}
+            onChange={(event) => void saveMode(event.target.value as LeaveEntryMode)}
+          >
+            <option value="request">신청형</option>
+            <option value="register">등록형</option>
+          </select>
+        </Field>
+      </div>
+      <LeaveKindsSection />
+      {mode === "request" || requests.length > 0 ? <h2 className="mb-2 text-sm font-semibold">휴가 신청</h2> : null}
+      {mode === "request" || requests.length > 0 ? (
+        requests.length === 0 ? <p className="mb-6 text-xs text-muted">대기 중인 신청이 없습니다.</p> : null
+      ) : null}
+      {requests.length > 0 ? (
+        <div className="ds-table is-compact mb-6 max-w-3xl">
+          <table className="w-full text-left">
+            <thead>
+              <tr>
+                <th>날짜</th>
+                <th>구성원</th>
+                <th>휴가</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {requests.map((request) => (
+                <tr key={request.id}>
+                  <td>{formatDate(request.work_date)}</td>
+                  <td>{oneName(request.subject)}</td>
+                  <td>
+                    {request.kind_name ?? (request.leave_type ? leaveTypeLabel(request.leave_type) : "휴가")} {formatLeaveDays(request.minutes)}
+                  </td>
+                  <td>
+                    <span className="inline-flex gap-2">
+                      <Button
+                        disabled={savingKey === request.id}
+                        onClick={() => void review(request.id, true)}
+                      >
+                        승인
+                      </Button>
+                      <Button variant="ghost" disabled={savingKey === request.id} onClick={() => void review(request.id, false)}>
+                        거절
+                      </Button>
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       ) : null}
       {members.length === 0 ? <p className="text-xs text-muted">구성원이 없습니다.</p> : null}

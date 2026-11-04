@@ -90,6 +90,25 @@ export async function adjustLeave(input: {
   if (error) throw new Error(error.message)
 }
 
+export async function requestLeave(input: { kindId: string; workDate: string; note: string }): Promise<void> {
+  const { error } = await supabase.rpc("request_leave", {
+    p_kind_id: input.kindId,
+    p_work_date: input.workDate,
+    p_note: input.note,
+  })
+  if (error) throw new Error(error.message)
+}
+
+export async function cancelLeaveRequest(id: string): Promise<void> {
+  const { error } = await supabase.rpc("cancel_leave_request", { p_id: id })
+  if (error) throw new Error(error.message)
+}
+
+export async function reviewLeaveRequest(id: string, approve: boolean): Promise<void> {
+  const { error } = await supabase.rpc("review_leave_request", { p_id: id, p_approve: approve })
+  if (error) throw new Error(error.message)
+}
+
 export async function inviteMember(body: {
   email: string
   name: string
