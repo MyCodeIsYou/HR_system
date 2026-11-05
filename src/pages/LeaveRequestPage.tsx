@@ -1,12 +1,21 @@
-import { useEffect, useState, type CSSProperties } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useAuth } from "../auth/AuthContext.tsx"
-import { Alert, Button, Field, Modal, Page } from "../components/ui.tsx"
+import { Alert, Button, Field, Page } from "../components/ui.tsx"
 import { cancelLeaveRequest, requestLeave } from "../lib/api.ts"
 import { deductLabel, formatLeaveDays, humanError, seoulToday } from "../lib/format.ts"
 import { supabase } from "../lib/supabase.ts"
 import type { LeaveBalance, LeaveKind, LeaveRequest, LeaveType } from "../types.ts"
 
+type CalendarLeave = LeaveRequest & { name: string }
+
 const weekdays = ["일", "월", "화", "수", "목", "금", "토"]
+
+const leaveTalk = [
+  { text: "저는 휴가봇 이에요.", mood: "smile" },
+  { text: "심심하시군요", mood: "flat" },
+  { text: "일 안하세요?", mood: "ask" },
+  { text: "그만해라 쫌!!!", mood: "mad" },
+] as const
 
 function balanceOf(rows: LeaveBalance[], type: LeaveType): number {
   return rows.find((row) => row.leave_type === type)?.balance_minutes ?? 0
@@ -20,6 +29,42 @@ function monthCells(year: number, month: number): Array<number | null> {
 
 function dateKey(year: number, month: number, day: number): string {
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+}
+
+function LeaveBotEyes({ mood }: { mood: (typeof leaveTalk)[number]["mood"] | null }) {
+  return (
+    <svg className="ds-eyes" viewBox="0 0 68 28" width="48" height="20" aria-hidden="true">
+      {mood === "smile" ? (
+        <>
+          <path d="M8 18c4-10 12-10 16 0" />
+          <path d="M44 18c4-10 12-10 16 0" />
+        </>
+      ) : mood === "flat" ? (
+        <>
+          <path d="M8 14h16" />
+          <path d="M44 14h16" />
+        </>
+      ) : mood === "ask" ? (
+        <>
+          <path d="M6 8c6-6 14-4 16 2" />
+          <circle cx="16" cy="18" r="3.2" />
+          <circle cx="50" cy="16" r="3.2" />
+        </>
+      ) : mood === "mad" ? (
+        <>
+          <path d="M8 6 26 16" />
+          <path d="M60 6 42 16" />
+          <path d="M10 22h12" />
+          <path d="M46 22h12" />
+        </>
+      ) : (
+        <>
+          <path d="M8 5l14 9-14 9" />
+          <path d="M60 5 46 14l14 9" />
+        </>
+      )}
+    </svg>
+  )
 }
 
 function chipLabel(request: LeaveRequest): string {
@@ -56,6 +101,12 @@ const extraTones: ChipTone[] = [
   { bg: "#f2f26a", fg: "#2a2808" },
 ]
 
+function statusLabel(request: LeaveRequest): string {
+  if (request.status === "pending") return "대기"
+  if (request.entry_mode === "register") return "등록"
+  return "승인"
+}
+
 function chipTone(request: LeaveRequest): ChipTone {
   const name = request.kind_name?.trim() || chipLabel(request)
   const known = namedTones[name]
@@ -71,7 +122,7 @@ export function LeaveRequestPage() {
   const today = seoulToday()
   const [year, setYear] = useState(Number(today.slice(0, 4)))
   const [month, setMonth] = useState(Number(today.slice(5, 7)))
-  const [requests, setRequests] = useState<LeaveRequest[]>([])
+  const [requests, setRequests] = useState<CalendarLeave[]>([])
   const [balances, setBalances] = useState<LeaveBalance[]>([])
   const [kinds, setKinds] = useState<LeaveKind[]>([])
   const [selected, setSelected] = useState<string | null>(null)
@@ -79,15 +130,36 @@ export function LeaveRequestPage() {
   const [note, setNote] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+  const [talk, setTalk] = useState<number | null>(null)
+  const [bubble, setBubble] = useState<{ text: string; key: number } | null>(null)
+  const bubbleTimer = useRef<number | null>(null)
+  const dayPanelRef = useRef<HTMLDivElement>(null)
+  const leaveLine = talk === null ? null : leaveTalk[talk]
+
+  useEffect(() => {
+    return () => {
+      if (bubbleTimer.current !== null) window.clearTimeout(bubbleTimer.current)
+    }
+  }, [])
+
+  function showBubble(text: string) {
+    setBubble({ text, key: Date.now() })
+    if (bubbleTimer.current !== null) window.clearTimeout(bubbleTimer.current)
+    bubbleTimer.current = window.setTimeout(() => setBubble(null), 2200)
+  }
+
+  function pokeLeaveBot() {
+    const next = talk === null ? 0 : (talk + 1) % leaveTalk.length
+    setTalk(next)
+    showBubble(leaveTalk[next].text)
+  }
 
   async function load() {
     if (!profile) throw new Error("프로필이 없습니다.")
+    const monthStart = dateKey(year, month, 1)
+    const monthEnd = dateKey(year, month, new Date(Date.UTC(year, month, 0)).getUTCDate())
     const [requestResult, balanceResult, kindResult] = await Promise.all([
-      supabase
-        .from("leave_requests")
-        .select("id, user_id, leave_type, kind_id, kind_name, work_date, minutes, status, note, entry_mode")
-        .eq("user_id", profile.id)
-        .in("status", ["pending", "approved"]),
+      supabase.rpc("workplace_leaves", { p_from: monthStart, p_to: monthEnd }),
       supabase.from("leave_balance_sums").select("user_id, leave_type, balance_minutes").eq("user_id", profile.id),
       supabase
         .from("leave_kinds")
@@ -100,11 +172,22 @@ export function LeaveRequestPage() {
     if (balanceResult.error) throw balanceResult.error
     if (kindResult.error) throw kindResult.error
     return {
-      requests: (requestResult.data ?? []) as LeaveRequest[],
+      requests: ((requestResult.data ?? []) as CalendarLeave[]).sort((a, b) => a.name.localeCompare(b.name, "ko") || a.id.localeCompare(b.id)),
       balances: (balanceResult.data ?? []) as LeaveBalance[],
       kinds: (kindResult.data ?? []) as LeaveKind[],
     }
   }
+
+  useEffect(() => {
+    if (!selected) return
+    function onClick(event: MouseEvent) {
+      const panel = dayPanelRef.current
+      if (!panel || !(event.target instanceof Node) || panel.contains(event.target)) return
+      setSelected(null)
+    }
+    document.addEventListener("click", onClick)
+    return () => document.removeEventListener("click", onClick)
+  }, [selected])
 
   useEffect(() => {
     if (!profile) return
@@ -129,19 +212,26 @@ export function LeaveRequestPage() {
     const next = new Date(Date.UTC(year, month - 1 + delta, 1))
     setYear(next.getUTCFullYear())
     setMonth(next.getUTCMonth() + 1)
+    setSelected(null)
   }
 
   function openDay(day: number) {
-    setSelected(dateKey(year, month, day))
+    const key = dateKey(year, month, day)
+    setError(null)
+    if (selected === key) {
+      setSelected(null)
+      return
+    }
+    setSelected(key)
     setKindId(kinds[0]?.id ?? "")
     setNote("")
-    setError(null)
   }
 
-  const selectedRequest = requests.find((request) => request.work_date === selected) ?? null
+  const dayRequests = requests.filter((request) => request.work_date === selected)
+  const myRequest = dayRequests.find((request) => request.user_id === profile?.id) ?? null
   const selectedKind = kinds.find((kind) => kind.id === kindId) ?? null
   const held = requests
-    .filter((request) => request.status === "pending" && selectedKind?.deduct_type && request.leave_type === selectedKind.deduct_type)
+    .filter((request) => request.user_id === profile?.id && request.status === "pending" && selectedKind?.deduct_type && request.leave_type === selectedKind.deduct_type)
     .reduce((sum, request) => sum + request.minutes, 0)
   const available = selectedKind?.deduct_type ? balanceOf(balances, selectedKind.deduct_type) - held : 0
 
@@ -152,11 +242,14 @@ export function LeaveRequestPage() {
     try {
       if (!selectedKind) return
       await requestLeave({ kindId: selectedKind.id, workDate: selected, note })
-      setSelected(null)
+      setNote("")
       const data = await load()
       setRequests(data.requests)
       setBalances(data.balances)
       setKinds(data.kinds)
+      setSelected(null)
+      setTalk(0)
+      showBubble("즐거운 휴가 되세요~")
     } catch (caught) {
       setError(humanError(caught))
     } finally {
@@ -169,7 +262,6 @@ export function LeaveRequestPage() {
     setError(null)
     try {
       await cancelLeaveRequest(id)
-      setSelected(null)
       const data = await load()
       setRequests(data.requests)
       setBalances(data.balances)
@@ -184,11 +276,7 @@ export function LeaveRequestPage() {
   return (
     <Page
       title="내 휴가"
-      description={
-        registerMode
-          ? "날짜를 눌러 휴가를 등록합니다. 승인 없이 바로 남은 휴가에서 차감됩니다. 1일, 반차 0.5일, 반반차 0.25일입니다."
-          : "날짜를 눌러 휴가를 신청합니다. 관리자가 승인한 뒤 차감됩니다. 대기 중인 신청도 남은 휴가에서 빼 둡니다."
-      }
+      description="초록점이 본인의 휴가 입니다."
       action={
         <div className="flex items-center gap-2">
           <button type="button" className="ds-icon-button" aria-label="이전 달" onClick={() => shiftMonth(-1)}>
@@ -212,115 +300,169 @@ export function LeaveRequestPage() {
           <Alert>{error}</Alert>
         </div>
       ) : null}
-      <ul className="mb-4 grid max-w-3xl grid-cols-3 gap-2">
-        {(
-          [
-            ["연차", "annual", "ds-tone-orange"],
-            ["보상휴가", "comp", "ds-tone-sky"],
-            ["여름휴가", "summer", "ds-tone-gold"],
-          ] as const
-        ).map(([label, type, tone]) => (
-          <li key={type} className={`ds-card ds-leave-card ${tone} px-2 py-2 text-center`}>
-            <p className="text-xs font-semibold">{label}</p>
-            <p className="mt-1 text-sm font-semibold tabular-nums">{formatLeaveDays(balanceOf(balances, type))}</p>
-          </li>
-        ))}
-      </ul>
-      <div className="ds-cal max-w-3xl">
-        {weekdays.map((label, index) => (
-          <div key={label} className={index === 0 ? "ds-cal-head is-sun" : "ds-cal-head"}>
-            {label}
-          </div>
-        ))}
-        {monthCells(year, month).map((day, index) => {
-          if (!day) return <div key={`empty-${index}`} />
-          const key = dateKey(year, month, day)
-          const request = requests.find((item) => item.work_date === key)
-          const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay()
-          const tone = request ? chipTone(request) : null
-          return (
-            <button
-              key={key}
-              type="button"
-              className={`ds-cal-day${key === today ? " is-today" : ""}${weekday === 0 ? " is-sun" : ""}${tone ? " is-marked" : ""}`}
-              style={tone ? ({ "--leave": tone.bg } as CSSProperties) : undefined}
-              aria-label={`${day}일${request ? ` ${chipLabel(request)}${request.status === "pending" ? " 대기" : ""}` : ""}`}
-              onClick={() => openDay(day)}
-            >
-              <span className="ds-cal-num">{day}</span>
-              {request && tone ? (
-                <span
-                  className={`ds-cal-chip${request.status === "pending" ? " is-pending" : ""}`}
-                  style={{ background: tone.bg, color: tone.fg }}
-                >
-                  {chipLabel(request)}
-                </span>
-              ) : null}
-            </button>
-          )
-        })}
+      <div className={`ds-leave-orbit${selected ? " is-flat" : ""}`}>
+        <div className="ds-card ds-orbit-card is-ml">
+          <p className="ds-orbit-label">연차</p>
+          <p className="ds-orbit-pill is-orange">{formatLeaveDays(balanceOf(balances, "annual"))}</p>
+        </div>
+        <div className="ds-card ds-orbit-card is-bc">
+          <p className="ds-orbit-label">여름휴가</p>
+          <p className="ds-orbit-pill is-lime">{formatLeaveDays(balanceOf(balances, "summer"))}</p>
+        </div>
+        <div className="ds-card ds-orbit-card is-mr">
+          <p className="ds-orbit-label">보상휴가</p>
+          <p className="ds-orbit-pill is-violet">{formatLeaveDays(balanceOf(balances, "comp"))}</p>
+        </div>
+        <button
+          type="button"
+          className={`ds-face is-leave ds-orbit-face${leaveLine ? ` is-${leaveLine.mood}` : ""}`}
+          aria-label="휴가봇"
+          onClick={pokeLeaveBot}
+        >
+          <span className="ds-face-core">
+            <LeaveBotEyes mood={leaveLine?.mood ?? null} />
+          </span>
+        </button>
+        {bubble ? (
+          <p key={bubble.key} className="ds-leave-bubble" role="status">
+            {bubble.text}
+          </p>
+        ) : null}
       </div>
-
-      {selected ? (
-        <Modal title={selected} onClose={() => setSelected(null)}>
-          {error ? (
-            <div className="mb-3">
-              <Alert>{error}</Alert>
+      <div className="max-w-3xl" ref={dayPanelRef}>
+        <div className={`ds-cal${selected ? " is-compact" : ""}`}>
+          {weekdays.map((label, index) => (
+            <div key={label} className={index === 0 ? "ds-cal-head is-sun" : "ds-cal-head"}>
+              {label}
             </div>
-          ) : null}
-          {selectedRequest ? (
-            <div className="grid gap-3 text-sm">
-              <p>
-                {chipLabel(selectedRequest)} {formatLeaveDays(selectedRequest.minutes)} ·{" "}
-                {selectedRequest.status === "pending" ? "대기" : selectedRequest.entry_mode === "register" ? "등록" : "승인"}
-              </p>
-              {selectedRequest.note ? <p className="text-muted">{selectedRequest.note}</p> : null}
-              {selectedRequest.status === "pending" || selectedRequest.entry_mode === "register" ? (
-                <Button variant="danger" disabled={pending} onClick={() => void cancel(selectedRequest.id)}>
-                  {pending ? "취소 중" : selectedRequest.entry_mode === "register" ? "등록 취소" : "신청 취소"}
-                </Button>
-              ) : (
-                <p className="text-xs text-muted">승인된 휴가는 여기서 취소할 수 없습니다.</p>
-              )}
-            </div>
-          ) : (
-            <form
-              className="grid gap-3"
-              onSubmit={(event) => {
-                event.preventDefault()
-                void submit()
-              }}
-            >
-              {kinds.length === 0 ? <p className="text-sm text-muted">신청할 수 있는 휴가가 없습니다.</p> : null}
-              {kinds.length > 0 ? (
-                <Field
-                  compact
-                  label="종류"
-                  hint={
-                    selectedKind?.deduct_type
-                      ? `${deductLabel(selectedKind.deduct_type)} ${formatLeaveDays(selectedKind.minutes)} · ${registerMode ? "등록" : "신청"} 가능 ${formatLeaveDays(Math.max(available, 0))}`
-                      : `${formatLeaveDays(selectedKind?.minutes ?? 0)} · 남은 휴가에서 빠지지 않습니다.`
-                  }
-                >
-                  <select value={kindId} onChange={(event) => setKindId(event.target.value)}>
-                    {kinds.map((kind) => (
-                      <option key={kind.id} value={kind.id}>
-                        {kind.name}
-                      </option>
+          ))}
+          {monthCells(year, month).map((day, index) => {
+            if (!day) return <div key={`empty-${index}`} />
+            const key = dateKey(year, month, day)
+            const dayItems = requests.filter((item) => item.work_date === key)
+            const myItem = dayItems.find((item) => item.user_id === profile?.id) ?? null
+            const otherItems = dayItems.filter((item) => item.user_id !== profile?.id)
+            const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay()
+            const names = dayItems.map((item) => `${item.user_id === profile?.id ? "나" : item.name} ${chipLabel(item)}${item.status === "pending" ? " 대기" : ""}`).join(", ")
+            return (
+              <button
+                key={key}
+                type="button"
+                className={`ds-cal-day${key === today ? " is-today" : ""}${weekday === 0 ? " is-sun" : ""}${key === selected ? " is-selected" : ""}`}
+                aria-pressed={key === selected}
+                aria-label={`${day}일${names ? ` ${names}` : ""}`}
+                onClick={() => openDay(day)}
+              >
+                <span className="ds-cal-num">
+                  {day}
+                  {myItem ? <span className={`ds-cal-dot${myItem.status === "pending" ? " is-pending" : ""}`} /> : null}
+                </span>
+                {otherItems.length > 0 ? (
+                  <span className="ds-cal-lines">
+                    {otherItems.map((item) => (
+                      <span
+                        key={item.id}
+                        className={`ds-cal-line${item.status === "pending" ? " is-pending" : ""}`}
+                        style={{ background: chipTone(item).bg }}
+                      />
                     ))}
-                  </select>
-                </Field>
-              ) : null}
-              <Field compact label="메모">
-                <input value={note} onChange={(event) => setNote(event.target.value)} placeholder="선택" />
-              </Field>
-              <Button type="submit" disabled={pending || !selectedKind}>
-                {pending ? (registerMode ? "등록 중" : "신청 중") : registerMode ? "등록" : "신청"}
-              </Button>
-            </form>
-          )}
-        </Modal>
-      ) : null}
+                  </span>
+                ) : null}
+              </button>
+            )
+          })}
+        </div>
+        <section className={`ds-leave-day${selected ? " is-open" : ""}`}>
+          <div className="ds-leave-day-inner">
+            {selected ? (
+              <div>
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-sm font-semibold">
+                    {Number(selected.slice(5, 7))}월 {Number(selected.slice(8, 10))}일 {weekdays[new Date(Date.UTC(year, month - 1, Number(selected.slice(8, 10)))).getUTCDay()]}요일
+                  </h2>
+                  <button type="button" className="text-xs text-muted underline-offset-4 hover:underline" onClick={() => setSelected(null)}>
+                    닫기
+                  </button>
+                </div>
+                {error ? (
+                  <div className="mt-3">
+                    <Alert>{error}</Alert>
+                  </div>
+                ) : null}
+                {dayRequests.length > 0 ? (
+                  <ul className="ds-leave-list">
+                    {dayRequests.map((request) => {
+                      const mine = request.user_id === profile?.id
+                      const canCancel = mine && (request.status === "pending" || request.entry_mode === "register")
+                      return (
+                        <li key={request.id} className="ds-leave-row">
+                          <span
+                            className={`ds-leave-swatch${mine ? " is-mine" : ""}${request.status === "pending" ? " is-pending" : ""}`}
+                            style={mine ? undefined : { background: chipTone(request).bg }}
+                          />
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm font-semibold">
+                              {request.name}
+                              {mine ? " · 나" : ""}
+                            </span>
+                            <span className="block truncate text-xs text-muted">
+                              {chipLabel(request)} {formatLeaveDays(request.minutes)} · {statusLabel(request)}
+                              {mine && request.note ? ` · ${request.note}` : ""}
+                            </span>
+                          </span>
+                          {canCancel ? (
+                            <Button variant="danger" disabled={pending} onClick={() => void cancel(request.id)}>
+                              {pending ? "취소 중" : "취소"}
+                            </Button>
+                          ) : null}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                ) : (
+                  <p className="mt-3 text-sm text-muted">이 날짜에 등록된 휴가가 없습니다.</p>
+                )}
+                {myRequest ? null : (
+                  <form
+                    className="mt-3 grid gap-3"
+                    onSubmit={(event) => {
+                      event.preventDefault()
+                      void submit()
+                    }}
+                  >
+                    {kinds.length === 0 ? <p className="text-sm text-muted">신청할 수 있는 휴가가 없습니다.</p> : null}
+                    {kinds.length > 0 ? (
+                      <Field
+                        compact
+                        label="종류"
+                        hint={
+                          selectedKind?.deduct_type
+                            ? `${deductLabel(selectedKind.deduct_type)} ${formatLeaveDays(selectedKind.minutes)} · ${registerMode ? "등록" : "신청"} 가능 ${formatLeaveDays(Math.max(available, 0))}`
+                            : `${formatLeaveDays(selectedKind?.minutes ?? 0)} · 남은 휴가에서 빠지지 않습니다.`
+                        }
+                      >
+                        <select value={kindId} onChange={(event) => setKindId(event.target.value)}>
+                          {kinds.map((kind) => (
+                            <option key={kind.id} value={kind.id}>
+                              {kind.name}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                    ) : null}
+                    <Field compact label="메모">
+                      <input value={note} onChange={(event) => setNote(event.target.value)} placeholder="선택" />
+                    </Field>
+                    <Button type="submit" disabled={pending || !selectedKind}>
+                      {pending ? (registerMode ? "등록 중" : "신청 중") : registerMode ? "등록" : "신청"}
+                    </Button>
+                  </form>
+                )}
+              </div>
+            ) : null}
+          </div>
+        </section>
+      </div>
     </Page>
   )
 }

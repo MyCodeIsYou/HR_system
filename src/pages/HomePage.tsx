@@ -189,7 +189,7 @@ export function HomePage() {
           <p className="ds-orbit-label">보상휴가</p>
           <p className="ds-orbit-pill is-violet">{formatLeaveDays(balance(balances, "comp"))}</p>
         </div>
-        <div className={`ds-face is-${mood} ds-orbit-face`} aria-hidden="true">
+        <div className={`ds-face is-${mood} ds-orbit-face`} role="img" aria-label="근태봇">
           <span className="ds-face-core">
             <svg className="ds-eyes" viewBox="0 0 68 28" width="48" height="20">
               <g className="ds-eyes-open">
@@ -218,7 +218,7 @@ export function HomePage() {
           <p className="ds-orbit-pill is-rose">{formatWon(fineTotal)}</p>
         </div>
         <p className="ds-orbit-caption">
-          <span className="font-semibold">{profile?.name}</span>
+          <span className="font-semibold">근태봇</span>
           <span className="text-muted"> · {moodText}</span>
         </p>
       </div>

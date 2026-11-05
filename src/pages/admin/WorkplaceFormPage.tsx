@@ -199,7 +199,7 @@ export function WorkplaceFormPage() {
   return (
     <Page
       title={workplaceId ? "사업장 수정" : "사업장 추가"}
-      description="지각은 유예를 넘긴 뒤 기준 출근 시각부터 분을 올립니다. 야근은 출근 시각과 야근 인정 시작 중 늦은 쪽부터 퇴근까지이며, 비율을 곱해 분 단위로 반올림합니다."
+      description="지각은 유예를 넘긴 뒤 기준 출근 시각부터 분을 올립니다. 대기 중이거나 승인된 오전반차·오전반반차가 있으면 그날 출근 기준이 휴가 시간만큼 늦어집니다. 야근은 출근 시각과 야근 인정 시작 중 늦은 쪽부터 퇴근까지이며, 비율을 곱해 분 단위로 반올림합니다."
       action={
         <Link to="/admin/workplaces" className="text-sm text-muted underline-offset-4 hover:underline">
           목록
@@ -217,10 +217,10 @@ export function WorkplaceFormPage() {
           <Field label="시간대" hint="출퇴근 날짜와 기준 시각은 이 시간대로 계산합니다.">
             <input value={draft.timezone} onChange={(event) => patch("timezone", event.target.value)} required />
           </Field>
-          <Field label="기준 출근" hint="다음날 이 시각 이후의 태그는 새 출근입니다. 그 전은 전날 근무의 퇴근입니다.">
+          <Field label="기준 출근" hint="지각은 이 시각과 유예를 기준으로 계산합니다.">
             <input type="time" value={draft.work_start} onChange={(event) => patch("work_start", event.target.value)} required />
           </Field>
-          <Field label="기준 퇴근">
+          <Field label="기준 퇴근" hint="그날 자정까지 퇴근이 없으면 이 시각으로 퇴근 처리합니다.">
             <input type="time" value={draft.work_end} onChange={(event) => patch("work_end", event.target.value)} required />
           </Field>
           <Field label="지각 유예(분)">

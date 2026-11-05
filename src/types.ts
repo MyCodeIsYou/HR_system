@@ -4,7 +4,7 @@ export type FineMode = "flat" | "per_minute" | "step"
 export type LeaveDeductionMode = "exact_minutes" | "per_occurrence"
 export type EventType = "in" | "out"
 export type LeaveType = "annual" | "comp" | "summer"
-export type AttendanceSource = "nfc" | "manual"
+export type AttendanceSource = "nfc" | "manual" | "auto"
 export type UiTheme = "night" | "soft"
 
 export type Profile = {
@@ -69,6 +69,7 @@ export type AttendanceResult = {
   overtime_minutes: number
   comp_leave_minutes_granted: number
   overtime_started?: boolean
+  leave_start_shift_minutes?: number
   event_id: string
   notice: "open_shift_left" | null
 }
@@ -155,6 +156,30 @@ export type Adjustment = {
   event_id: string | null
   actor?: { name: string } | { name: string }[] | null
   subject?: { name: string } | { name: string }[] | null
+}
+
+export type SupportKind = "correction" | "inquiry"
+export type SupportStatus = "open" | "answered" | "closed"
+
+export type SupportTicket = {
+  id: string
+  kind: SupportKind
+  title: string
+  body: string
+  status: SupportStatus
+  reply: string
+  masked_name: string
+  mine: boolean
+  created_at: string
+  updated_at: string
+  replied_at: string | null
+}
+
+export type SupportTicketPage = {
+  total: number
+  page: number
+  size: number
+  items: SupportTicket[]
 }
 
 export const workplaceColumns =

@@ -1,17 +1,26 @@
 import { useEffect, useState, type FormEvent } from "react"
 import { Alert, Button, Empty, Field, Modal, Page } from "../../components/ui.tsx"
 import { addAttendanceEvent, voidAttendanceEvent } from "../../lib/api.ts"
-import { eventLabel, formatDate, formatTime, humanError, oneName, penaltyLines, seoulDateTimeLocal, seoulLocalToIso, seoulToday } from "../../lib/format.ts"
+import { eventLabel, formatTime, humanError, oneName, penaltyLines, seoulDateTimeLocal, seoulLocalToIso, seoulToday } from "../../lib/format.ts"
 import { supabase } from "../../lib/supabase.ts"
-import type { Adjustment, AttendanceEvent, AttendanceResult, Profile, Workplace } from "../../types.ts"
+import type { AttendanceEvent, AttendanceResult, Profile, Workplace } from "../../types.ts"
 import { workplaceColumns } from "../../types.ts"
+
+const pageSize = 10
+
+function pageWindow(page: number, pageCount: number): number[] {
+  const end = Math.min(pageCount, Math.max(page + 2, 5))
+  const start = Math.max(1, end - 4)
+  return Array.from({ length: Math.min(pageCount, end) - start + 1 }, (_, index) => start + index)
+}
 
 export function AttendancePage() {
   const [events, setEvents] = useState<AttendanceEvent[]>([])
-  const [adjustments, setAdjustments] = useState<Adjustment[]>([])
   const [members, setMembers] = useState<Profile[]>([])
   const [workplaces, setWorkplaces] = useState<Workplace[]>([])
   const [date, setDate] = useState(seoulToday())
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<AttendanceResult | null>(null)
   const [pending, setPending] = useState(false)
@@ -26,40 +35,42 @@ export function AttendancePage() {
     note: "",
   })
 
-  async function load() {
-    const [eventResult, memberResult, workplaceResult, adjustmentResult] = await Promise.all([
+  async function load(nextPage = page) {
+    const from = (nextPage - 1) * pageSize
+    const [eventResult, memberResult, workplaceResult] = await Promise.all([
       supabase
         .from("attendance_events")
-        .select("id, user_id, workplace_id, event_type, occurred_at, work_date, source, voided_at, profiles(name), workplaces(name)")
+        .select("id, user_id, workplace_id, event_type, occurred_at, work_date, source, voided_at, profiles(name), workplaces(name)", { count: "exact" })
         .eq("work_date", date)
-        .order("occurred_at", { ascending: false }),
+        .order("occurred_at", { ascending: false })
+        .range(from, from + pageSize - 1),
       supabase.from("profiles").select("id, name, role, organization_id, workplace_id, email, employee_number, hired_at, created_at").order("name"),
       supabase.from("workplaces").select(workplaceColumns).order("name"),
-      supabase
-        .from("attendance_adjustments")
-        .select("id, action, note, created_at, event_id, actor:profiles!attendance_adjustments_actor_id_fkey(name), subject:profiles!attendance_adjustments_user_id_fkey(name)")
-        .order("created_at", { ascending: false })
-        .limit(30),
     ])
     if (eventResult.error) throw eventResult.error
     if (memberResult.error) throw memberResult.error
     if (workplaceResult.error) throw workplaceResult.error
-    if (adjustmentResult.error) throw adjustmentResult.error
+    const count = eventResult.count ?? 0
+    const lastPage = Math.max(1, Math.ceil(count / pageSize))
+    if (nextPage > lastPage) {
+      setPage(lastPage)
+      return
+    }
+    setTotal(count)
     setEvents((eventResult.data ?? []) as AttendanceEvent[])
     setMembers((memberResult.data ?? []) as Profile[])
     setWorkplaces((workplaceResult.data ?? []) as Workplace[])
-    setAdjustments((adjustmentResult.data ?? []) as Adjustment[])
   }
 
   useEffect(() => {
     let active = true
-    void load().catch((caught: unknown) => {
+    void load(page).catch((caught: unknown) => {
       if (active) setError(humanError(caught))
     })
     return () => {
       active = false
     }
-  }, [date])
+  }, [date, page])
 
   async function onAdd(event: FormEvent) {
     event.preventDefault()
@@ -101,6 +112,8 @@ export function AttendancePage() {
       setPending(false)
     }
   }
+
+  const pageCount = Math.max(1, Math.ceil(total / pageSize))
 
   return (
     <Page
@@ -154,7 +167,14 @@ export function AttendancePage() {
 
       <div className="mt-4 w-40">
         <Field compact label="근무일">
-          <input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+          <input
+            type="date"
+            value={date}
+            onChange={(event) => {
+              setDate(event.target.value)
+              setPage(1)
+            }}
+          />
         </Field>
       </div>
 
@@ -177,7 +197,7 @@ export function AttendancePage() {
                 <td className={row.voided_at ? "text-muted line-through" : ""}>{eventLabel(row.event_type)}</td>
                 <td className="tabular-nums">{formatTime(row.occurred_at)}</td>
                 <td>{oneName(row.workplaces)}</td>
-                <td>{row.source === "nfc" ? "NFC" : "수동"}</td>
+                <td>{row.source === "nfc" ? "NFC" : row.source === "auto" ? "자동" : "수동"}</td>
                 <td>
                   {row.voided_at ? "취소됨" : (
                     <button type="button" className="text-danger" onClick={() => setVoidId(row.id)}>취소</button>
@@ -189,6 +209,30 @@ export function AttendancePage() {
         </table>
         {events.length === 0 ? <Empty>이 날짜의 기록이 없습니다.</Empty> : null}
       </div>
+      <nav className="ds-pager max-w-3xl" aria-label="출퇴근 이력 페이지">
+        <button type="button" className="ds-pager-button" disabled={page <= 1} onClick={() => setPage((current) => current - 1)}>
+          이전
+        </button>
+        {pageWindow(page, pageCount).map((number) => (
+          <button
+            key={number}
+            type="button"
+            className={`ds-pager-button${number === page ? " is-current" : ""}`}
+            aria-current={number === page ? "page" : undefined}
+            onClick={() => setPage(number)}
+          >
+            {number}
+          </button>
+        ))}
+        <button
+          type="button"
+          className="ds-pager-button"
+          disabled={page >= pageCount}
+          onClick={() => setPage((current) => current + 1)}
+        >
+          다음
+        </button>
+      </nav>
 
       {voidId ? (
         <Modal title="기록 취소" onClose={() => setVoidId(null)}>
@@ -203,35 +247,6 @@ export function AttendancePage() {
             </div>
           </form>
         </Modal>
-      ) : null}
-
-      <h2 className="mt-5 mb-2 text-sm font-semibold">보정 이력</h2>
-      {adjustments.length === 0 ? <p className="text-xs text-muted">보정 이력이 없습니다.</p> : null}
-      {adjustments.length > 0 ? (
-        <div className="ds-table is-compact max-w-3xl">
-          <table className="w-full text-left">
-            <thead className="text-muted">
-              <tr>
-                <th className="font-medium">처리</th>
-                <th className="font-medium">대상</th>
-                <th className="font-medium">구분</th>
-                <th className="font-medium">시각</th>
-                <th className="font-medium">사유</th>
-              </tr>
-            </thead>
-            <tbody>
-              {adjustments.map((row) => (
-                <tr key={row.id}>
-                  <td>{oneName(row.actor)}</td>
-                  <td>{oneName(row.subject)}</td>
-                  <td>{row.action === "add_event" ? "기록 추가" : "기록 취소"}</td>
-                  <td className="tabular-nums">{formatDate(row.created_at)} {formatTime(row.created_at)}</td>
-                  <td>{row.note}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
       ) : null}
     </Page>
   )

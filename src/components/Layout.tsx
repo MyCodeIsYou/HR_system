@@ -9,6 +9,8 @@ const active = "is-active"
 const links = [
   { to: "/", label: "내 근태", end: true, admin: false },
   { to: "/leave", label: "내 휴가", end: false, admin: false },
+  { to: "/support", label: "고객센터", end: false, admin: false },
+  { to: "/faq", label: "자주 묻는 질문", end: false, admin: false },
   { to: "/admin/workplaces", label: "사업장", admin: true },
   { to: "/admin/members", label: "구성원", admin: true },
   { to: "/admin/attendance", label: "출퇴근", admin: true },

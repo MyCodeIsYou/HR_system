@@ -142,6 +142,8 @@ export function eventLabel(eventType: "in" | "out"): string {
 
 export function penaltyLines(result: AttendanceResult): string[] {
   const lines: string[] = []
+  const shift = result.leave_start_shift_minutes ?? 0
+  if (shift > 0) lines.push(`출근 기준이 ${formatMinutes(shift)} 늦춰졌습니다`)
   if (result.late_minutes > 0) {
     lines.push(`지각 ${result.late_minutes}분`)
     if (result.penalty_type === "fine") lines.push(`벌금 ${formatWon(result.fine_amount)}`)

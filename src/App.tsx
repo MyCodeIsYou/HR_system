@@ -7,6 +7,8 @@ import { HomePage } from "./pages/HomePage.tsx"
 import { LeaveRequestPage } from "./pages/LeaveRequestPage.tsx"
 import { LoginPage } from "./pages/LoginPage.tsx"
 import { SetupPage } from "./pages/SetupPage.tsx"
+import { SupportPage } from "./pages/SupportPage.tsx"
+import { FaqPage } from "./pages/FaqPage.tsx"
 import { AnnualLeavePage } from "./pages/admin/AnnualLeavePage.tsx"
 import { AttendancePage } from "./pages/admin/AttendancePage.tsx"
 import { CompLeavePage } from "./pages/admin/CompLeavePage.tsx"
@@ -72,6 +74,8 @@ export function App() {
       <Route element={<RequireAuth />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/leave" element={<LeaveRequestPage />} />
+        <Route path="/support" element={<SupportPage />} />
+        <Route path="/faq" element={<FaqPage />} />
         <Route element={<RequireAdmin />}>
           <Route path="/admin/workplaces" element={<WorkplacesPage />} />
           <Route path="/admin/workplaces/new" element={<WorkplaceFormPage />} />
