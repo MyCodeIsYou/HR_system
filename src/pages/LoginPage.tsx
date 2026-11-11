@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react"
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom"
 import { useAuth } from "../auth/AuthContext.tsx"
 import { Button, Card, Field, FullScreen, Toast } from "../components/ui.tsx"
+import { appBasePath } from "../lib/env.ts"
 import { humanError, safeNext } from "../lib/format.ts"
 import { clearPasswordSetup, pendingPasswordSetup, supabase } from "../lib/supabase.ts"
 
@@ -24,7 +25,8 @@ export function LoginPage() {
   if (!ready) return <FullScreen title="불러오는 중" />
 
   function loginRedirectUrl() {
-    return new URL("login", window.location.origin + import.meta.env.BASE_URL).toString()
+    const base = appBasePath()
+    return new URL("login", `${window.location.origin}${base}/`).toString()
   }
 
   async function onSetPassword(event: FormEvent) {

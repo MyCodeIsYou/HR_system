@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "근태",
+    "slug": "hr-system",
+    "scheme": "hrsystem",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#101428",
+    "newArchEnabled": true,
+    "android": {
+      "package": "com.hrsystem.app",
+      "backgroundColor": "#101428"
+    },
+    "ios": {
+      "bundleIdentifier": "com.hrsystem.app",
+      "supportsTablet": true,
+      "backgroundColor": "#101428"
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}

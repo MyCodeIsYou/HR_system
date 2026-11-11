@@ -1,7 +1,8 @@
 import { createClient } from "@supabase/supabase-js"
+import { supabaseAnonKey, supabaseUrl } from "./env.ts"
 
-const url = import.meta.env.VITE_SUPABASE_URL
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const url = supabaseUrl()
+const anonKey = supabaseAnonKey()
 const passwordSetupKey = "hr-password-setup"
 
 function capturePasswordSetup() {

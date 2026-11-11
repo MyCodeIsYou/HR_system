@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Cafe24 Ssurround";
+  src: url("./assets/fonts/Cafe24Ssurround.woff") format("woff");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 /*
   근태 디자인 시스템
   반경 4 / 8 / 12 / 16

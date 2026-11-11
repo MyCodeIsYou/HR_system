@@ -10,6 +10,15 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+.expo
+.expo-export
+/android
+/ios
+dist-mobile
+*.apk
+*.aab
+*.ipa
+*.jks
 *.local
 .env
 .env.*

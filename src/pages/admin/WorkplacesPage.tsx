@@ -3,6 +3,7 @@ import { Link } from "react-router-dom"
 import { useAuth } from "../../auth/AuthContext.tsx"
 import { Alert, Button, Empty, Field, Modal, Page } from "../../components/ui.tsx"
 import { workplaceToken } from "../../lib/api.ts"
+import { appBasePath } from "../../lib/env.ts"
 import { clockLabel, formatWon, humanError, latePolicyLabel } from "../../lib/format.ts"
 import { supabase } from "../../lib/supabase.ts"
 import { workplaceColumns, type Workplace } from "../../types.ts"
@@ -186,7 +187,7 @@ function WorkplaceDetail({
   onCopied: () => void
   onClose: () => void
 }) {
-  const base = import.meta.env.BASE_URL.replace(/\/$/, "")
+  const base = appBasePath()
   const link = token ? `${window.location.origin}${base}/c/${token}` : ""
 
   return (

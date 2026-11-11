@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom"
 import { useAuth } from "../../auth/AuthContext.tsx"
 import { Alert, Button, Card, Field, Notice, Page } from "../../components/ui.tsx"
 import { rotateWorkplaceToken, workplaceToken } from "../../lib/api.ts"
+import { appBasePath } from "../../lib/env.ts"
 import { clockLabel, humanError } from "../../lib/format.ts"
 import { supabase } from "../../lib/supabase.ts"
 import type { FineMode, LatePolicy, LeaveDeductionMode, Workplace } from "../../types.ts"
@@ -193,7 +194,7 @@ export function WorkplaceFormPage() {
     navigate("/admin/workplaces")
   }
 
-  const base = import.meta.env.BASE_URL.replace(/\/$/, "")
+  const base = appBasePath()
   const link = token ? `${window.location.origin}${base}/c/${token}` : ""
 
   return (
