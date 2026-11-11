@@ -6,11 +6,17 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
+    "icon": "./icon.png",
     "backgroundColor": "#101428",
     "newArchEnabled": true,
     "android": {
       "package": "com.hrsystem.app",
-      "backgroundColor": "#101428"
+      "versionCode": 3,
+      "backgroundColor": "#101428",
+      "adaptiveIcon": {
+        "foregroundImage": "./icon.png",
+        "backgroundColor": "#0255C4"
+      }
     },
     "ios": {
       "bundleIdentifier": "com.hrsystem.app",

@@ -64,7 +64,7 @@ export function Layout() {
           <LogoutButton />
         </div>
       </aside>
-      <div className="min-w-0">
+      <div className="w-full min-w-0">
         <button type="button" className="ds-menu-toggle ds-icon-button" aria-label="메뉴" onClick={() => setOpen(true)}>
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
             <path d="M5 7h14" />
