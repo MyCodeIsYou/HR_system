@@ -3,7 +3,7 @@ import { Link } from "react-router-dom"
 import { useAuth } from "../../auth/AuthContext.tsx"
 import { Alert, Button, Empty, Field, Modal, Page } from "../../components/ui.tsx"
 import { workplaceToken } from "../../lib/api.ts"
-import { appCheckinUrl, webCheckinUrl } from "../../lib/checkinLink.ts"
+import { nfcCheckinUrl } from "../../lib/checkinLink.ts"
 import { clockLabel, formatWon, humanError, latePolicyLabel } from "../../lib/format.ts"
 import { supabase } from "../../lib/supabase.ts"
 import { workplaceColumns, type Workplace } from "../../types.ts"
@@ -42,7 +42,7 @@ export function WorkplacesPage() {
   const [detail, setDetail] = useState<Workplace | null>(null)
   const [token, setToken] = useState<string | null>(null)
   const [tokenError, setTokenError] = useState<string | null>(null)
-  const [copied, setCopied] = useState<"web" | "app" | null>(null)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     setName(organization?.name ?? "")
@@ -53,7 +53,7 @@ export function WorkplacesPage() {
     let active = true
     setToken(null)
     setTokenError(null)
-    setCopied(null)
+    setCopied(false)
     void workplaceToken(detail.id)
       .then((value) => {
         if (active) setToken(value)
@@ -164,7 +164,7 @@ export function WorkplacesPage() {
           token={token}
           tokenError={tokenError}
           copied={copied}
-          onCopied={setCopied}
+          onCopied={() => setCopied(true)}
           onClose={() => setDetail(null)}
         />
       ) : null}
@@ -183,12 +183,11 @@ function WorkplaceDetail({
   workplace: Workplace
   token: string | null
   tokenError: string | null
-  copied: "web" | "app" | null
-  onCopied: (kind: "web" | "app") => void
+  copied: boolean
+  onCopied: () => void
   onClose: () => void
 }) {
-  const webLink = token ? webCheckinUrl(token) : ""
-  const appLink = token ? appCheckinUrl(token) : ""
+  const nfcLink = token ? nfcCheckinUrl(token) : ""
 
   return (
     <Modal
@@ -216,36 +215,20 @@ function WorkplaceDetail({
       </dl>
       <div className="mt-4">
         <p className="text-xs text-muted">NFC 주소</p>
-        <p className="mt-1 text-xs leading-5 text-muted">웹 주소는 브라우저, 앱 주소는 설치된 앱을 엽니다. 카드에는 둘 중 하나만 적습니다.</p>
+        <p className="mt-1 text-xs leading-5 text-muted">이 주소 하나만 카드에 적습니다. 앱이 있으면 앱이 열리고, 없으면 웹으로 갑니다.</p>
         {tokenError ? <p className="mt-1 text-sm text-danger">{tokenError}</p> : null}
-        {webLink ? (
-          <>
-            <p className="mt-3 text-xs text-muted">웹 주소</p>
-            <p className="mt-1 text-sm leading-6 break-all">{webLink}</p>
-            <p className="mt-3 text-xs text-muted">앱 주소</p>
-            <p className="mt-1 text-sm leading-6 break-all">{appLink}</p>
-          </>
-        ) : null}
-        {!webLink && !tokenError ? <p className="mt-1 text-sm text-muted">불러오는 중</p> : null}
-        {webLink ? (
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Button
-              variant="ghost"
-              onClick={() => {
-                void navigator.clipboard.writeText(webLink).then(() => onCopied("web"))
-              }}
-            >
-              {copied === "web" ? "복사함" : "웹 주소 복사"}
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                void navigator.clipboard.writeText(appLink).then(() => onCopied("app"))
-              }}
-            >
-              {copied === "app" ? "복사함" : "앱 주소 복사"}
-            </Button>
-          </div>
+        {nfcLink ? <p className="mt-1 text-sm leading-6 break-all">{nfcLink}</p> : null}
+        {!nfcLink && !tokenError ? <p className="mt-1 text-sm text-muted">불러오는 중</p> : null}
+        {nfcLink ? (
+          <Button
+            className="mt-3"
+            variant="ghost"
+            onClick={() => {
+              void navigator.clipboard.writeText(nfcLink).then(onCopied)
+            }}
+          >
+            {copied ? "복사함" : "주소 복사"}
+          </Button>
         ) : null}
       </div>
     </Modal>

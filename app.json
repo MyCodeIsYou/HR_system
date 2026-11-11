@@ -11,7 +11,7 @@
     "newArchEnabled": true,
     "android": {
       "package": "com.hrsystem.app",
-      "versionCode": 4,
+      "versionCode": 6,
       "backgroundColor": "#101428",
       "adaptiveIcon": {
         "foregroundImage": "./icon.png",
