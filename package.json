@@ -4,6 +4,13 @@
   "version": "0.0.0",
   "type": "module",
   "main": "index.ts",
+  "expo": {
+    "autolinking": {
+      "android": {
+        "buildFromSource": ["expo-dom-webview"]
+      }
+    }
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
