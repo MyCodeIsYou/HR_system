@@ -393,7 +393,11 @@ export function LeaveRequestPage() {
                   <ul className="ds-leave-list">
                     {dayRequests.map((request) => {
                       const mine = request.user_id === profile?.id
-                      const canCancel = mine && (request.status === "pending" || request.entry_mode === "register")
+                      const past = request.work_date < today
+                      const admin = profile?.role === "admin"
+                      const canCancel = admin
+                        ? request.status === "pending" || request.status === "approved"
+                        : mine && !past && (request.status === "pending" || request.entry_mode === "register")
                       return (
                         <li key={request.id} className="ds-leave-row">
                           <span

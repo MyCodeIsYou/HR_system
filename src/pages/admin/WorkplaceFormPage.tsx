@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom"
 import { useAuth } from "../../auth/AuthContext.tsx"
 import { Alert, Button, Card, Field, Notice, Page } from "../../components/ui.tsx"
 import { rotateWorkplaceToken, workplaceToken } from "../../lib/api.ts"
-import { appBasePath } from "../../lib/env.ts"
+import { appCheckinUrl, webCheckinUrl } from "../../lib/checkinLink.ts"
 import { clockLabel, humanError } from "../../lib/format.ts"
 import { supabase } from "../../lib/supabase.ts"
 import type { FineMode, LatePolicy, LeaveDeductionMode, Workplace } from "../../types.ts"
@@ -91,7 +91,7 @@ export function WorkplaceFormPage() {
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
   const [confirmRotate, setConfirmRotate] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const [copied, setCopied] = useState<"web" | "app" | null>(null)
 
   useEffect(() => {
     if (!workplaceId) return
@@ -173,7 +173,7 @@ export function WorkplaceFormPage() {
     try {
       setToken(await rotateWorkplaceToken(workplaceId))
       setConfirmRotate(false)
-      setCopied(false)
+      setCopied(null)
     } catch (caught) {
       setError(humanError(caught))
     } finally {
@@ -194,8 +194,8 @@ export function WorkplaceFormPage() {
     navigate("/admin/workplaces")
   }
 
-  const base = appBasePath()
-  const link = token ? `${window.location.origin}${base}/c/${token}` : ""
+  const webLink = token ? webCheckinUrl(token) : ""
+  const appLink = token ? appCheckinUrl(token) : ""
 
   return (
     <Page
@@ -321,21 +321,35 @@ export function WorkplaceFormPage() {
         </div>
       </form>
 
-      {workplaceId && link ? (
+      {workplaceId && webLink ? (
         <Card className="mt-6">
           <h2 className="font-semibold">NFC 주소</h2>
-          <p className="mt-2 text-sm leading-6 break-all text-muted">{link}</p>
-          <p className="mt-2 text-xs leading-5 text-muted">NFC 카드에는 이 주소를 URI로 기록합니다. 카드만으로는 출퇴근되지 않고, 휴대폰에 로그인된 계정이 기록됩니다.</p>
+          <p className="mt-2 text-xs leading-5 text-muted">카드에는 주소 하나만 적습니다. 웹 주소는 브라우저를 열고, 앱 주소는 설치된 앱을 엽니다.</p>
+          <p className="mt-4 text-xs text-muted">웹 주소</p>
+          <p className="mt-1 text-sm leading-6 break-all">{webLink}</p>
+          <p className="mt-4 text-xs text-muted">앱 주소</p>
+          <p className="mt-1 text-sm leading-6 break-all">{appLink}</p>
+          <p className="mt-2 text-xs leading-5 text-muted">앱이 설치된 안드로이드는 앱 주소로 출퇴근이 기록됩니다. 앱이 없으면 웹 주소를 카드에 적습니다. 카드만으로는 출퇴근되지 않고, 휴대폰에 로그인된 계정이 기록됩니다.</p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Button
               variant="ghost"
               onClick={() => {
-                void navigator.clipboard.writeText(link).then(() => {
-                  setCopied(true)
+                void navigator.clipboard.writeText(webLink).then(() => {
+                  setCopied("web")
                 })
               }}
             >
-              {copied ? "복사함" : "주소 복사"}
+              {copied === "web" ? "복사함" : "웹 주소 복사"}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                void navigator.clipboard.writeText(appLink).then(() => {
+                  setCopied("app")
+                })
+              }}
+            >
+              {copied === "app" ? "복사함" : "앱 주소 복사"}
             </Button>
             {confirmRotate ? (
               <Button variant="danger" disabled={pending} onClick={() => void rotate()}>

@@ -107,18 +107,22 @@ function initialView(token: string | null): PunchView {
 
 export function CheckinPage() {
   const { token } = useParams()
+  const location = useLocation()
   const navigate = useNavigate()
   const { configured, ready, session, profile, profileError } = useAuth()
+  const tap = (location.state as { tap?: number } | null)?.tap
 
   useEffect(() => {
     if (!ready || !session || !profile?.organization_id || !token) return
-    if (openedFromHistory() || inflight.has(token) || storageGet(lockKey) === token) {
+    const freshTap = typeof tap === "number"
+    if (freshTap) storageRemove(lockKey)
+    if (!freshTap && (openedFromHistory() || inflight.has(token) || storageGet(lockKey) === token)) {
       navigate("/c/result", { replace: true, state: { token } })
       return
     }
     startPunch(token)
     navigate("/c/result", { replace: true, state: { token } })
-  }, [ready, session, profile?.organization_id, token, navigate])
+  }, [ready, session, profile?.organization_id, token, navigate, tap])
 
   if (!configured) return null
   if (!token) return <Navigate to="/" replace />
