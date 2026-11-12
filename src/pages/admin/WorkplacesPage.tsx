@@ -215,7 +215,7 @@ function WorkplaceDetail({
       </dl>
       <div className="mt-4">
         <p className="text-xs text-muted">NFC 주소</p>
-        <p className="mt-1 text-xs leading-5 text-muted">이 주소 하나만 카드에 적습니다. 앱이 있으면 앱이 열리고, 없으면 웹으로 갑니다.</p>
+        <p className="mt-1 text-xs leading-5 text-muted">카드에는 이 웹 주소를 적습니다. 안드로이드에서는 앱이 있으면 앱으로, 없으면 이 페이지로 갑니다.</p>
         {tokenError ? <p className="mt-1 text-sm text-danger">{tokenError}</p> : null}
         {nfcLink ? <p className="mt-1 text-sm leading-6 break-all">{nfcLink}</p> : null}
         {!nfcLink && !tokenError ? <p className="mt-1 text-sm text-muted">불러오는 중</p> : null}

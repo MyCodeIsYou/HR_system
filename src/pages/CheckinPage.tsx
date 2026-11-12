@@ -3,9 +3,11 @@ import { Link, Navigate, useLocation, useNavigate, useParams } from "react-route
 import { useAuth } from "../auth/AuthContext.tsx"
 import { Button, FullScreen, Notice } from "../components/ui.tsx"
 import { recordAttendance } from "../lib/api.ts"
+import { appLaunchUrl, shouldOfferApp } from "../lib/checkinLink.ts"
 import { eventLabel, formatTime, humanError, penaltyLines } from "../lib/format.ts"
 import type { AttendanceResult } from "../types.ts"
 
+const appHandedKey = "hr-app-handed"
 const lockKey = "hr-nfc-lock"
 const tokenKey = "hr-nfc-token"
 const resultKey = "hr-nfc-result"
@@ -111,8 +113,34 @@ export function CheckinPage() {
   const navigate = useNavigate()
   const { configured, ready, session, profile, profileError } = useAuth()
   const tap = (location.state as { tap?: number } | null)?.tap
+  const [handedOff, setHandedOff] = useState(() => Boolean(token) && storageGet(appHandedKey) === token)
+  const [offerApp, setOfferApp] = useState(() => Boolean(token) && shouldOfferApp() && storageGet(appHandedKey) !== token)
 
   useEffect(() => {
+    if (!token || !offerApp) return
+    const fallback = new URL(window.location.href)
+    fallback.searchParams.set("web", "1")
+    const onHide = () => {
+      if (document.visibilityState !== "hidden") return
+      storageSet(appHandedKey, token)
+      setHandedOff(true)
+      setOfferApp(false)
+    }
+    document.addEventListener("visibilitychange", onHide)
+    const timer = window.setTimeout(() => {
+      document.removeEventListener("visibilitychange", onHide)
+      if (storageGet(appHandedKey) === token) return
+      setOfferApp(false)
+    }, 1600)
+    window.location.replace(appLaunchUrl(token, fallback.toString()))
+    return () => {
+      document.removeEventListener("visibilitychange", onHide)
+      window.clearTimeout(timer)
+    }
+  }, [token, offerApp])
+
+  useEffect(() => {
+    if (offerApp || handedOff) return
     if (!ready || !session || !profile?.organization_id || !token) return
     const freshTap = typeof tap === "number"
     if (freshTap) storageRemove(lockKey)
@@ -122,12 +150,26 @@ export function CheckinPage() {
     }
     startPunch(token)
     navigate("/c/result", { replace: true, state: { token } })
-  }, [ready, session, profile?.organization_id, token, navigate, tap])
+  }, [ready, session, profile?.organization_id, token, navigate, tap, offerApp, handedOff])
 
   if (!configured) return null
   if (!token) return <Navigate to="/" replace />
+  if (handedOff) {
+    return (
+      <FullScreen title="앱에서 이어집니다">
+        <p>이 폰에서는 앱이 출퇴근을 기록합니다.</p>
+        <Link to="/" className="mt-4 inline-block text-sm underline">
+          웹에서 내 근태 보기
+        </Link>
+      </FullScreen>
+    )
+  }
+  if (offerApp) return <FullScreen title="앱을 확인하는 중" />
   if (!ready) return <FullScreen title="출퇴근을 확인하는 중" />
-  if (!session) return <Navigate to={`/login?next=${encodeURIComponent(`/c/${token}`)}`} replace />
+  if (!session) {
+    const next = new URLSearchParams(location.search).get("web") === "1" ? `/c/${token}?web=1` : `/c/${token}`
+    return <Navigate to={`/login?next=${encodeURIComponent(next)}`} replace />
+  }
   if (profileError) return <FullScreen title="프로필을 불러오지 못했습니다">{profileError}</FullScreen>
   if (!profile) return <FullScreen title="프로필을 불러오는 중" />
   if (!profile.organization_id) return <Navigate to="/setup" replace />

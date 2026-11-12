@@ -324,7 +324,7 @@ export function WorkplaceFormPage() {
         <Card className="mt-6">
           <h2 className="font-semibold">NFC 주소</h2>
           <p className="mt-2 text-sm leading-6 break-all">{nfcLink}</p>
-          <p className="mt-2 text-xs leading-5 text-muted">카드에는 이 주소 하나만 적습니다. 앱이 있으면 앱이 열리고, 없으면 웹 출퇴근 페이지가 열립니다. 카드만으로는 출퇴근되지 않고, 휴대폰에 로그인된 계정이 기록됩니다.</p>
+          <p className="mt-2 text-xs leading-5 text-muted">카드에는 이 웹 주소를 적습니다. 안드로이드에서 페이지가 열리면 앱이 있는 폰은 앱으로 넘어가고, 앱이 없으면 이 페이지에서 출퇴근합니다.</p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Button
               variant="ghost"
