@@ -132,6 +132,40 @@ textarea::placeholder {
   color: #7e89a8;
 }
 
+.ds-password {
+  position: relative;
+  display: block;
+}
+
+.ds-password input {
+  padding-right: 2.75rem;
+}
+
+.ds-password input::-ms-reveal,
+.ds-password input::-ms-clear {
+  display: none;
+}
+
+.ds-password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.35rem;
+  display: grid;
+  width: 2.15rem;
+  height: 2.15rem;
+  place-items: center;
+  translate: 0 -50%;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.ds-password-toggle:hover {
+  color: var(--color-ink);
+}
+
 input:focus,
 select:focus,
 textarea:focus {

@@ -16,10 +16,35 @@ export function appLaunchUrl(token: string, fallback: string): string {
   return `intent://c/${token}#Intent;scheme=hrsystem;package=com.hrsystem.app;S.browser_fallback_url=${encodeURIComponent(fallback)};end`
 }
 
+export function pwaLaunchUrl(token: string, fallback: string): string {
+  const target = new URL(webCheckinUrl(token))
+  return `intent://${target.host}${target.pathname}#Intent;scheme=https;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;S.browser_fallback_url=${encodeURIComponent(fallback)};end`
+}
+
+export function isStandalonePwa(): boolean {
+  if (typeof window === "undefined") return false
+  const nav = window.navigator as Navigator & { standalone?: boolean }
+  if (nav.standalone) return true
+  if (document.referrer.startsWith("android-app://")) return true
+  return window.matchMedia("(display-mode: standalone), (display-mode: fullscreen)").matches
+}
+
+export async function installedPwa(): Promise<boolean> {
+  const nav = navigator as Navigator & { getInstalledRelatedApps?: () => Promise<Array<{ platform?: string }>> }
+  if (!nav.getInstalledRelatedApps) return false
+  try {
+    const apps = await nav.getInstalledRelatedApps()
+    return apps.some((app) => app.platform === "webapp")
+  } catch {
+    return false
+  }
+}
+
 export function shouldOfferApp(): boolean {
   if (typeof window === "undefined" || typeof navigator === "undefined") return false
   const host = window as Window & { ReactNativeWebView?: unknown; $$EXPO_DOM_HOST_OS?: string }
   if (host.ReactNativeWebView || host.$$EXPO_DOM_HOST_OS) return false
+  if (isStandalonePwa()) return false
   if (window.location.hostname !== "mycodeisyou.github.io") return false
   if (!/Android/i.test(navigator.userAgent)) return false
   return new URLSearchParams(window.location.search).get("web") !== "1"

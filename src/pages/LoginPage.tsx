@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react"
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom"
 import { useAuth } from "../auth/AuthContext.tsx"
-import { Button, Card, Field, FullScreen, Toast } from "../components/ui.tsx"
+import { Button, Card, Field, FullScreen, PasswordInput, Toast } from "../components/ui.tsx"
 import { appBasePath } from "../lib/env.ts"
 import { humanError, safeNext } from "../lib/format.ts"
 import { clearPasswordSetup, pendingPasswordSetup, supabase } from "../lib/supabase.ts"
@@ -123,24 +123,10 @@ export function LoginPage() {
           </p>
           <form className="mt-6 space-y-4" onSubmit={(event) => void onSetPassword(event)}>
             <Field label="비밀번호">
-              <input
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                required
-                minLength={6}
-                autoComplete="new-password"
-              />
+              <PasswordInput value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" />
             </Field>
             <Field label="비밀번호 확인">
-              <input
-                type="password"
-                value={confirm}
-                onChange={(event) => setConfirm(event.target.value)}
-                required
-                minLength={6}
-                autoComplete="new-password"
-              />
+              <PasswordInput value={confirm} onChange={(event) => setConfirm(event.target.value)} autoComplete="new-password" />
             </Field>
             {error ? <p className="text-sm text-danger">{error}</p> : null}
             <Button type="submit" className="w-full" disabled={pending}>
@@ -211,12 +197,9 @@ export function LoginPage() {
             />
           </Field>
           <Field label="비밀번호">
-            <input
-              type="password"
+            <PasswordInput
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              required
-              minLength={6}
               autoComplete={mode === "login" ? "current-password" : "new-password"}
             />
           </Field>

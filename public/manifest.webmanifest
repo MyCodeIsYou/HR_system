@@ -6,6 +6,16 @@
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
+  "handle_links": "preferred",
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
+  "related_applications": [
+    {
+      "platform": "webapp",
+      "url": "https://mycodeisyou.github.io/HR_system/manifest.webmanifest"
+    }
+  ],
   "lang": "ko",
   "background_color": "#101428",
   "theme_color": "#101428",

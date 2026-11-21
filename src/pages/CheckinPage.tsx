@@ -3,11 +3,12 @@ import { Link, Navigate, useLocation, useNavigate, useParams } from "react-route
 import { useAuth } from "../auth/AuthContext.tsx"
 import { Button, FullScreen, Notice } from "../components/ui.tsx"
 import { recordAttendance } from "../lib/api.ts"
-import { appLaunchUrl, shouldOfferApp } from "../lib/checkinLink.ts"
+import { appLaunchUrl, installedPwa, pwaLaunchUrl, shouldOfferApp } from "../lib/checkinLink.ts"
 import { eventLabel, formatTime, humanError, penaltyLines } from "../lib/format.ts"
 import type { AttendanceResult } from "../types.ts"
 
 const appHandedKey = "hr-app-handed"
+const pwaTriedKey = "hr-pwa-tried"
 const lockKey = "hr-nfc-lock"
 const tokenKey = "hr-nfc-token"
 const resultKey = "hr-nfc-result"
@@ -114,10 +115,32 @@ export function CheckinPage() {
   const { configured, ready, session, profile, profileError } = useAuth()
   const tap = (location.state as { tap?: number } | null)?.tap
   const [handedOff, setHandedOff] = useState(() => Boolean(token) && storageGet(appHandedKey) === token)
+  const [offerPwa, setOfferPwa] = useState(
+    () => Boolean(token) && shouldOfferApp() && new URLSearchParams(location.search).get("pwa") !== "1" && storageGet(pwaTriedKey) !== token,
+  )
   const [offerApp, setOfferApp] = useState(() => Boolean(token) && shouldOfferApp() && storageGet(appHandedKey) !== token)
 
   useEffect(() => {
-    if (!token || !offerApp) return
+    if (!token || !offerPwa) return
+    let cancel = false
+    void installedPwa().then((installed) => {
+      if (cancel) return
+      if (!installed) {
+        setOfferPwa(false)
+        return
+      }
+      storageSet(pwaTriedKey, token)
+      const fallback = new URL(window.location.href)
+      fallback.searchParams.set("pwa", "1")
+      window.location.replace(pwaLaunchUrl(token, fallback.toString()))
+    })
+    return () => {
+      cancel = true
+    }
+  }, [token, offerPwa])
+
+  useEffect(() => {
+    if (!token || !offerApp || offerPwa) return
     const fallback = new URL(window.location.href)
     fallback.searchParams.set("web", "1")
     const onHide = () => {
@@ -137,10 +160,10 @@ export function CheckinPage() {
       document.removeEventListener("visibilitychange", onHide)
       window.clearTimeout(timer)
     }
-  }, [token, offerApp])
+  }, [token, offerApp, offerPwa])
 
   useEffect(() => {
-    if (offerApp || handedOff) return
+    if (offerApp || offerPwa || handedOff) return
     if (!ready || !session || !profile?.organization_id || !token) return
     const freshTap = typeof tap === "number"
     if (freshTap) storageRemove(lockKey)
@@ -150,7 +173,7 @@ export function CheckinPage() {
     }
     startPunch(token)
     navigate("/c/result", { replace: true, state: { token } })
-  }, [ready, session, profile?.organization_id, token, navigate, tap, offerApp, handedOff])
+  }, [ready, session, profile?.organization_id, token, navigate, tap, offerApp, offerPwa, handedOff])
 
   if (!configured) return null
   if (!token) return <Navigate to="/" replace />
@@ -164,10 +187,16 @@ export function CheckinPage() {
       </FullScreen>
     )
   }
+  if (offerPwa) return <FullScreen title="근태 앱을 확인하는 중" />
   if (offerApp) return <FullScreen title="앱을 확인하는 중" />
   if (!ready) return <FullScreen title="출퇴근을 확인하는 중" />
   if (!session) {
-    const next = new URLSearchParams(location.search).get("web") === "1" ? `/c/${token}?web=1` : `/c/${token}`
+    const params = new URLSearchParams(location.search)
+    const nextParams = new URLSearchParams()
+    if (params.get("web") === "1") nextParams.set("web", "1")
+    if (params.get("pwa") === "1") nextParams.set("pwa", "1")
+    const query = nextParams.toString()
+    const next = query ? `/c/${token}?${query}` : `/c/${token}`
     return <Navigate to={`/login?next=${encodeURIComponent(next)}`} replace />
   }
   if (profileError) return <FullScreen title="프로필을 불러오지 못했습니다">{profileError}</FullScreen>
