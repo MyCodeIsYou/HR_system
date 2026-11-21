@@ -1,25 +1,38 @@
 {
+  "id": "./",
   "name": "근태",
   "short_name": "근태",
   "description": "NFC 출퇴근과 지각·야근 보상 근태",
-  "start_url": "/HR_system/",
-  "scope": "/HR_system/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "lang": "ko",
   "background_color": "#101428",
   "theme_color": "#101428",
   "icons": [
     {
-      "src": "/icons/icon-192.png",
+      "src": "icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-512.png",
+      "src": "icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
