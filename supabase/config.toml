@@ -51,3 +51,6 @@ verify_jwt = false
 
 [functions.weekly-leave-digest]
 verify_jwt = false
+
+[functions.leave-eve-push]
+verify_jwt = false
