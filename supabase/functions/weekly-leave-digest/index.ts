@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2"
+import { sendPush, type PushTarget } from "../_shared/webpush.ts"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -106,58 +107,11 @@ function kindLabel(row: LeaveRow): string {
   return "휴가"
 }
 
-function dayAmount(minutes: number): string {
-  const days = Math.round((minutes / 480) * 100) / 100
-  const text = Math.abs(days).toFixed(2).replace(/0+$/, "").replace(/\.$/, "")
-  return `${text}일`
-}
-
-function digestText(orgName: string, start: string, end: string, rows: LeaveRow[]): string {
-  const lines = [
-    `${orgName} 이번 주 휴가 일정입니다.`,
-    `${dayText(start)} – ${dayText(end)}`,
-    "",
-  ]
-  for (let offset = 0; offset < 7; offset += 1) {
-    const date = addDays(start, offset)
-    const items = rows
-      .filter((row) => row.work_date === date)
-      .sort((left, right) => personName(left.profile).localeCompare(personName(right.profile), "ko"))
-    lines.push(dayText(date))
-    if (items.length === 0) {
-      lines.push("- 없음")
-    } else {
-      for (const row of items) {
-        const waiting = row.status === "pending" ? " (대기)" : ""
-        lines.push(`- ${personName(row.profile)} · ${kindLabel(row)} ${dayAmount(row.minutes)}${waiting}`)
-      }
-    }
-    lines.push("")
-  }
-  lines.push("대기 중인 신청은 아직 승인 전입니다.")
+function pushBody(rows: LeaveRow[]): string {
+  if (rows.length === 0) return "이번 주 휴가 일정이 없습니다."
+  const lines = rows.slice(0, 6).map((row) => `${dayText(row.work_date)} ${personName(row.profile)} · ${kindLabel(row)}`)
+  if (rows.length > 6) lines.push(`외 ${rows.length - 6}건`)
   return lines.join("\n")
-}
-
-async function sendMail(from: string, apiKey: string, recipients: string[], subject: string, text: string) {
-  const payload: Record<string, unknown> = {
-    from,
-    to: [recipients[0]],
-    subject,
-    text,
-  }
-  if (recipients.length > 1) payload.bcc = recipients.slice(1)
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  })
-  if (!response.ok) {
-    const detail = await response.text()
-    throw new Error(detail.slice(0, 300) || "메일을 보내지 못했습니다.")
-  }
 }
 
 Deno.serve(async (req) => {
@@ -172,6 +126,7 @@ Deno.serve(async (req) => {
   const provided = req.headers.get("x-cron-secret") ?? ""
   const cron = Boolean(expected) && provided === expected
   let testOrgId: string | null = null
+  let testUserId: string | null = null
   if (!cron) {
     const jwt = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "")
     if (!jwt) return json({ error: "배치 인증에 실패했습니다." }, 401)
@@ -183,18 +138,13 @@ Deno.serve(async (req) => {
       .eq("id", userData.user.id)
       .maybeSingle()
     if (profileError) return json({ error: profileError.message }, 500)
-    if (profile?.role !== "admin" || !profile.organization_id) return json({ error: "관리자만 테스트 메일을 보낼 수 있습니다." }, 403)
+    if (profile?.role !== "admin" || !profile.organization_id) return json({ error: "관리자만 테스트 알림을 보낼 수 있습니다." }, 403)
     testOrgId = profile.organization_id
-  }
-
-  const apiKey = Deno.env.get("RESEND_API_KEY") ?? ""
-  const from = Deno.env.get("LEAVE_DIGEST_FROM") ?? ""
-  if (!apiKey || !from) {
-    return json({ error: "메일 발신 설정(RESEND_API_KEY, LEAVE_DIGEST_FROM)이 없습니다." }, 500)
+    testUserId = userData.user.id
   }
 
   const { start, end } = thisWeek()
-  const [orgResult, leaveResult, sentResult] = await Promise.all([
+  const [orgResult, leaveResult, sentResult, subscriptionResult] = await Promise.all([
     admin.from("organizations").select("id, name, leave_digest_emails, leave_digest_weekday, leave_digest_time"),
     admin
       .from("leave_requests")
@@ -203,12 +153,15 @@ Deno.serve(async (req) => {
       .lte("work_date", end)
       .in("status", ["approved", "pending"]),
     admin.from("leave_digest_sends").select("organization_id").eq("week_start", start),
+    admin.from("push_subscriptions").select("organization_id, user_id, endpoint, p256dh, auth"),
   ])
   if (orgResult.error) return json({ error: orgResult.error.message }, 500)
   if (leaveResult.error) return json({ error: leaveResult.error.message }, 500)
   if (sentResult.error) return json({ error: sentResult.error.message }, 500)
+  if (subscriptionResult.error) return json({ error: subscriptionResult.error.message }, 500)
 
   const sentIds = new Set((sentResult.data ?? []).map((row) => row.organization_id as string))
+  const subscriptions = (subscriptionResult.data ?? []) as Array<PushTarget & { organization_id: string; user_id: string }>
   const results: { organization: string; recipients: number; status: string }[] = []
 
   for (const org of (orgResult.data ?? []) as OrgRow[]) {
@@ -222,38 +175,38 @@ Deno.serve(async (req) => {
       results.push({ organization: org.name, recipients: 0, status: "시각 전" })
       continue
     }
-    const recipients = [
-      ...new Set(
-        (org.leave_digest_emails ?? [])
-          .map((email) => email.trim().toLowerCase())
-          .filter((email) => email.includes("@")),
-      ),
-    ]
-    if (recipients.length === 0) {
-      results.push({ organization: org.name, recipients: 0, status: "받을 주소 없음" })
+    const targets = subscriptions.filter((row) => row.organization_id === org.id && (!testing || row.user_id === testUserId))
+    if (targets.length === 0) {
+      results.push({ organization: org.name, recipients: 0, status: "알림을 켠 기기가 없습니다." })
       continue
     }
     const rows = ((leaveResult.data ?? []) as LeaveRow[]).filter((row) => row.organization_id === org.id)
-    const subject = `${testing ? "[테스트] " : ""}[근태] ${dayText(start)}–${dayText(end)} 휴가 일정`
-    const text = `${testing ? "테스트 발송입니다.\n\n" : ""}${digestText(org.name, start, end, rows)}`
     try {
-      await sendMail(from, apiKey, recipients, subject, text)
+      const delivered = await sendPush(targets, {
+        title: testing ? "휴가 알림 테스트" : "이번 주 휴가",
+        body: testing ? "알림이 이 기기로 도착했습니다." : pushBody(rows),
+        url: "admin/leaves",
+      })
+      if (delivered.gone.length > 0) {
+        await admin.from("push_subscriptions").delete().in("endpoint", delivered.gone)
+      }
+      if (delivered.sent === 0) throw new Error(delivered.errors[0] ?? "푸시를 보내지 못했습니다.")
       if (!testing) {
         const { error: saveError } = await admin.from("leave_digest_sends").upsert({
           organization_id: org.id,
           week_start: start,
           sent_at: new Date().toISOString(),
-          recipient_count: recipients.length,
+          recipient_count: delivered.sent,
         })
         if (saveError) throw new Error(saveError.message)
       }
-      results.push({ organization: org.name, recipients: recipients.length, status: "발송" })
+      results.push({ organization: org.name, recipients: delivered.sent, status: "발송" })
     } catch (caught) {
-      const message = caught instanceof Error ? caught.message : "메일을 보내지 못했습니다."
-      results.push({ organization: org.name, recipients: recipients.length, status: message })
+      const message = caught instanceof Error ? caught.message : "푸시를 보내지 못했습니다."
+      results.push({ organization: org.name, recipients: 0, status: message })
     }
   }
 
-  const failed = results.some((row) => !["발송", "이미 발송", "받을 주소 없음", "시각 전"].includes(row.status))
+  const failed = results.some((row) => !["발송", "이미 발송", "시각 전", "알림을 켠 기기가 없습니다."].includes(row.status))
   return json({ week_start: start, week_end: end, results }, failed ? 500 : 200)
 })

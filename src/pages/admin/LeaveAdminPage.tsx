@@ -1,9 +1,10 @@
-import { useEffect, useState, type FormEvent } from "react"
+import { useEffect, useState } from "react"
 import { useAuth } from "../../auth/AuthContext.tsx"
 import { Alert, Button, Field, Page, Toast } from "../../components/ui.tsx"
 import { LeaveKindsSection } from "./LeaveKindsSection.tsx"
 import { adjustLeave, reviewLeaveRequest, sendLeaveDigestTest } from "../../lib/api.ts"
 import { formatDate, formatDateTime, formatLeaveDays, humanError, leaveDayValue, leaveTypeLabel, oneName, parseLeaveDays } from "../../lib/format.ts"
+import { currentPushSubscription, disablePush, enablePush, pushSupported } from "../../lib/push.ts"
 import { supabase } from "../../lib/supabase.ts"
 import type { LeaveBalance, LeaveEntryMode, LeaveLedgerEntry, LeaveRequest, LeaveType, Profile } from "../../types.ts"
 
@@ -38,7 +39,7 @@ function daysLabel(minutes: number): string {
 }
 
 export function LeaveAdminPage() {
-  const { organization, refresh } = useAuth()
+  const { organization, profile, refresh } = useAuth()
   const [members, setMembers] = useState<MemberLeave[]>([])
   const [entries, setEntries] = useState<LeaveLedgerEntry[]>([])
   const [requests, setRequests] = useState<LeaveRequest[]>([])
@@ -46,18 +47,27 @@ export function LeaveAdminPage() {
   const [message, setMessage] = useState<string | null>(null)
   const [savingKey, setSavingKey] = useState<string | null>(null)
   const [mode, setMode] = useState<LeaveEntryMode>(organization?.leave_entry_mode ?? "request")
-  const [digestEmails, setDigestEmails] = useState<string[]>(organization?.leave_digest_emails ?? [])
   const [digestWeekday, setDigestWeekday] = useState(organization?.leave_digest_weekday ?? 1)
   const [digestTime, setDigestTime] = useState(digestTimeValue(organization?.leave_digest_time))
-  const [digestDraft, setDigestDraft] = useState("")
   const [testingDigest, setTestingDigest] = useState(false)
+  const [pushOn, setPushOn] = useState(false)
+  const [pushBusy, setPushBusy] = useState(false)
 
   useEffect(() => {
     setMode(organization?.leave_entry_mode ?? "request")
-    setDigestEmails(organization?.leave_digest_emails ?? [])
     setDigestWeekday(organization?.leave_digest_weekday ?? 1)
     setDigestTime(digestTimeValue(organization?.leave_digest_time))
-  }, [organization?.leave_entry_mode, organization?.leave_digest_emails, organization?.leave_digest_weekday, organization?.leave_digest_time])
+  }, [organization?.leave_entry_mode, organization?.leave_digest_weekday, organization?.leave_digest_time])
+
+  useEffect(() => {
+    let active = true
+    void currentPushSubscription().then((subscription) => {
+      if (active) setPushOn(Boolean(subscription))
+    })
+    return () => {
+      active = false
+    }
+  }, [])
 
   async function load() {
     const [profileResult, balanceResult, ledgerResult, requestResult] = await Promise.all([
@@ -187,22 +197,6 @@ export function LeaveAdminPage() {
     setMessage(next === "register" ? "등록형으로 저장했습니다." : "신청형으로 저장했습니다.")
   }
 
-  async function saveDigest(next: string[]) {
-    if (!organization) return
-    const previous = digestEmails
-    setDigestEmails(next)
-    setError(null)
-    setMessage(null)
-    const { error: updateError } = await supabase.from("organizations").update({ leave_digest_emails: next }).eq("id", organization.id)
-    if (updateError) {
-      setDigestEmails(previous)
-      setError(humanError(new Error(updateError.message)))
-      return
-    }
-    await refresh()
-    setMessage("휴가 일정 메일을 받을 주소를 저장했습니다.")
-  }
-
   async function saveSchedule(weekday: number, time: string) {
     if (!organization) return
     if (!/^\d{2}:\d{2}$/.test(time)) {
@@ -227,12 +221,44 @@ export function LeaveAdminPage() {
     }
     await refresh()
     const label = digestWeekdays.find((item) => item.value === weekday)?.label ?? "월요일"
-    setMessage(`휴가 메일을 매주 ${label} ${time}에 보내도록 저장했습니다.`)
+    setMessage(`휴가 알림을 매주 ${label} ${time}에 보내도록 저장했습니다.`)
+  }
+
+  async function turnPushOn() {
+    if (!profile?.id || !organization) return
+    setPushBusy(true)
+    setError(null)
+    setMessage(null)
+    try {
+      await enablePush(profile.id, organization.id)
+      setPushOn(true)
+      setMessage("이 기기의 알림을 켰습니다.")
+    } catch (caught) {
+      setError(humanError(caught))
+    } finally {
+      setPushBusy(false)
+    }
+  }
+
+  async function turnPushOff() {
+    if (!profile?.id) return
+    setPushBusy(true)
+    setError(null)
+    setMessage(null)
+    try {
+      await disablePush(profile.id)
+      setPushOn(false)
+      setMessage("이 기기의 알림을 껐습니다.")
+    } catch (caught) {
+      setError(humanError(caught))
+    } finally {
+      setPushBusy(false)
+    }
   }
 
   async function sendDigestTest() {
-    if (digestEmails.length === 0) {
-      setError("받을 메일 주소를 먼저 추가하세요.")
+    if (!pushOn) {
+      setError("이 기기의 알림을 먼저 켜 주세요.")
       return
     }
     setTestingDigest(true)
@@ -240,31 +266,12 @@ export function LeaveAdminPage() {
     setMessage(null)
     try {
       await sendLeaveDigestTest()
-      setMessage("테스트 메일을 보냈습니다.")
+      setMessage("테스트 알림을 보냈습니다.")
     } catch (caught) {
       setError(humanError(caught))
     } finally {
       setTestingDigest(false)
     }
-  }
-
-  async function addDigest(event: FormEvent) {
-    event.preventDefault()
-    const email = digestDraft.trim().toLowerCase()
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-      setError("메일 주소를 확인해 주세요.")
-      return
-    }
-    if (digestEmails.includes(email)) {
-      setError("이미 있는 메일 주소입니다.")
-      return
-    }
-    if (digestEmails.length >= 20) {
-      setError("메일 주소는 20개까지 넣을 수 있습니다.")
-      return
-    }
-    setDigestDraft("")
-    await saveDigest([...digestEmails, email])
   }
 
   async function review(id: string, approve: boolean) {
@@ -309,11 +316,11 @@ export function LeaveAdminPage() {
           </select>
         </Field>
       </div>
-      <form className="mb-6 max-w-xl" onSubmit={(event) => void addDigest(event)}>
+      <div className="mb-6 max-w-xl">
         <div className="mb-4 flex flex-wrap items-end gap-3">
           <Field compact label="발송 요일">
             <select
-              aria-label="휴가 메일 발송 요일"
+              aria-label="휴가 알림 발송 요일"
               value={digestWeekday}
               style={{ width: "8rem" }}
               onChange={(event) => void saveSchedule(Number(event.target.value), digestTime)}
@@ -326,7 +333,7 @@ export function LeaveAdminPage() {
           <Field compact label="발송 시각">
             <input
               type="time"
-              aria-label="휴가 메일 발송 시각"
+              aria-label="휴가 알림 발송 시각"
               value={digestTime}
               style={{ width: "8.5rem" }}
               onChange={(event) => setDigestTime(event.target.value)}
@@ -337,38 +344,17 @@ export function LeaveAdminPage() {
               }}
             />
           </Field>
-          <Button type="button" variant="ghost" disabled={testingDigest} onClick={() => void sendDigestTest()}>
+          <Button type="button" disabled={pushBusy || !pushSupported()} onClick={() => void (pushOn ? turnPushOff() : turnPushOn())}>
+            {pushBusy ? "저장 중" : pushOn ? "알림 끄기" : "알림 켜기"}
+          </Button>
+          <Button type="button" variant="ghost" disabled={testingDigest || !pushOn} onClick={() => void sendDigestTest()}>
             {testingDigest ? "보내는 중" : "테스트 발송"}
           </Button>
         </div>
-        <Field compact label="주간 휴가 메일" hint={`매주 ${digestWeekdays.find((item) => item.value === digestWeekday)?.label ?? "월요일"} ${digestTime}에 이번 주 휴가 일정을 아래 주소로 보냅니다. 그 요일에 시각이 지난 뒤, 이번 주에 아직 안 보냈으면 보냅니다. 비어 있으면 보내지 않습니다.`}>
-          <div className="flex gap-2">
-            <input
-              type="email"
-              value={digestDraft}
-              onChange={(event) => setDigestDraft(event.target.value)}
-              placeholder="name@company.com"
-              aria-label="휴가 일정 메일을 받을 주소"
-              style={{ width: "auto", flex: "1 1 auto", minWidth: 0 }}
-            />
-            <Button type="submit">추가</Button>
-          </div>
-        </Field>
-        {digestEmails.length > 0 ? (
-          <ul className="mt-3 grid gap-2">
-            {digestEmails.map((email) => (
-              <li key={email} className="flex items-center justify-between gap-3 border border-line px-3 py-2 text-sm" style={{ borderRadius: 4 }}>
-                <span className="min-w-0 truncate">{email}</span>
-                <Button variant="ghost" onClick={() => void saveDigest(digestEmails.filter((item) => item !== email))}>
-                  삭제
-                </Button>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mt-3 text-xs text-muted">받는 주소가 없습니다.</p>
-        )}
-      </form>
+        <p className="text-xs text-muted">
+          {`매주 ${digestWeekdays.find((item) => item.value === digestWeekday)?.label ?? "월요일"} ${digestTime}에, 알림을 켠 기기로 이번 주 휴가 일정을 보냅니다. 아이폰은 홈 화면에 추가한 앱에서 알림을 켜 주세요.`}
+        </p>
+      </div>
       <LeaveKindsSection />
       {mode === "request" || requests.length > 0 ? <h2 className="mb-2 text-sm font-semibold">휴가 신청</h2> : null}
       {mode === "request" || requests.length > 0 ? (

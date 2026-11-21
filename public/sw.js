@@ -1,4 +1,4 @@
-const SHELL = "hr-shell-v1"
+const SHELL = "hr-shell-v2"
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -58,6 +58,36 @@ async function networkThenShell(request) {
     throw error
   }
 }
+
+self.addEventListener("push", (event) => {
+  let payload = {}
+  try {
+    payload = event.data ? event.data.json() : {}
+  } catch {
+    payload = {}
+  }
+  const title = typeof payload.title === "string" ? payload.title : "근태"
+  const body = typeof payload.body === "string" ? payload.body : ""
+  const url = typeof payload.url === "string" ? payload.url : "./"
+  const icon = new URL("icons/icon-192.png", self.registration.scope).href
+  event.waitUntil(self.registration.showNotification(title, { body, icon, badge: icon, data: { url } }))
+})
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close()
+  const target = new URL(event.notification.data?.url || "./", self.registration.scope).href
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(async (windows) => {
+      const open = windows.find((client) => client.url.startsWith(self.registration.scope))
+      if (open && "focus" in open) {
+        await open.focus()
+        if ("navigate" in open) await open.navigate(target)
+        return
+      }
+      await self.clients.openWindow(target)
+    }),
+  )
+})
 
 async function cacheFirst(request) {
   const cached = await caches.match(request)

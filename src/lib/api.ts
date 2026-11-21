@@ -164,11 +164,10 @@ export async function sendLeaveDigestTest(): Promise<void> {
         if (caught instanceof Error && caught.message !== error.message) throw caught
       }
     }
-    throw new Error("테스트 메일을 보내지 못했습니다.")
+    throw new Error("테스트 알림을 보내지 못했습니다.")
   }
   const results = (data as { results?: { status: string }[] } | null)?.results ?? []
   const status = results[0]?.status
   if (status === "발송") return
-  if (status === "받을 주소 없음") throw new Error("받을 메일 주소를 먼저 추가하세요.")
-  throw new Error(status || "테스트 메일을 보내지 못했습니다.")
+  throw new Error(status || "테스트 알림을 보내지 못했습니다.")
 }
