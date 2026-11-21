@@ -447,8 +447,56 @@ a:hover > .ds-card {
   padding: 10px 10px 10px 12px;
 }
 
+.ds-main {
+  width: 100%;
+  min-width: 0;
+}
+
+.ds-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 52px;
+  padding: 12px 16px 0;
+}
+
 .ds-menu-toggle {
-  margin: 12px 0 0 12px;
+  margin: 0;
+}
+
+.ds-push {
+  position: relative;
+  margin-left: auto;
+}
+
+.ds-button.ds-push-toggle {
+  min-height: 36px;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+.ds-push-note {
+  position: absolute;
+  z-index: 25;
+  top: calc(100% + 8px);
+  right: 0;
+  width: max-content;
+  max-width: min(18rem, 72vw);
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, #2fe3c8, #7c6bff);
+  padding: 0.55rem 0.7rem;
+  color: #07121c;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  box-shadow: 0 12px 24px rgb(47 227 200 / 0.22);
+}
+
+.ds-push-note.is-error {
+  background: #3a2a2c;
+  color: var(--color-danger);
+  box-shadow: var(--shadow-sm);
 }
 
 .ds-home-title {
@@ -502,23 +550,19 @@ a:hover > .ds-card {
 
 @media (max-width: 767px) {
   .ds-home-page {
-    margin-top: -48px;
     padding-top: 12px;
   }
 
   .ds-home-title {
     align-items: flex-start;
     flex-wrap: nowrap;
-    min-height: 36px;
     margin-bottom: 1rem;
-    padding-left: 40px;
   }
 
   .ds-home-title h1 {
     min-width: 0;
-    margin-top: 8px;
     font-size: 1.2rem;
-    line-height: 1;
+    line-height: 1.2;
     white-space: nowrap;
   }
 
@@ -579,6 +623,11 @@ a:hover > .ds-card {
 
   .ds-menu-toggle {
     display: none;
+  }
+
+  .ds-topbar {
+    padding-right: 32px;
+    padding-left: 32px;
   }
 }
 
@@ -1708,9 +1757,16 @@ html[data-theme="soft"] .ds-notice {
   color: #8a5a10;
 }
 
-html[data-theme="soft"] .ds-toast {
+html[data-theme="soft"] .ds-toast,
+html[data-theme="soft"] .ds-push-note {
   background: linear-gradient(180deg, #ffb15a, #ff7a3c);
   color: #fff;
+  box-shadow: var(--soft-shadow);
+}
+
+html[data-theme="soft"] .ds-push-note.is-error {
+  background: #ffe4e8;
+  color: #9d2034;
   box-shadow: var(--soft-shadow);
 }
 

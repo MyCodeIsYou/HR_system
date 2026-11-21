@@ -2,6 +2,7 @@ import { useState } from "react"
 import { NavLink, Outlet } from "react-router-dom"
 import { useAuth } from "../auth/AuthContext.tsx"
 import { LogoutButton } from "./LogoutButton.tsx"
+import { PushHeaderButton } from "./PushHeaderButton.tsx"
 
 const item = "ds-nav"
 const active = "is-active"
@@ -64,14 +65,17 @@ export function Layout() {
           <LogoutButton />
         </div>
       </aside>
-      <div className="w-full min-w-0">
-        <button type="button" className="ds-menu-toggle ds-icon-button" aria-label="메뉴" onClick={() => setOpen(true)}>
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-            <path d="M5 7h14" />
-            <path d="M5 12h14" />
-            <path d="M5 17h14" />
-          </svg>
-        </button>
+      <div className="ds-main">
+        <header className="ds-topbar">
+          <button type="button" className="ds-menu-toggle ds-icon-button" aria-label="메뉴" onClick={() => setOpen(true)}>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+              <path d="M5 7h14" />
+              <path d="M5 12h14" />
+              <path d="M5 17h14" />
+            </svg>
+          </button>
+          <PushHeaderButton />
+        </header>
         <Outlet />
       </div>
     </div>

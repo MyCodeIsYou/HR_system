@@ -4,7 +4,7 @@ import { Alert, Button, Field, Page, Toast } from "../../components/ui.tsx"
 import { LeaveKindsSection } from "./LeaveKindsSection.tsx"
 import { adjustLeave, reviewLeaveRequest, sendLeaveDigestTest } from "../../lib/api.ts"
 import { formatDate, formatDateTime, formatLeaveDays, humanError, leaveDayValue, leaveTypeLabel, oneName, parseLeaveDays } from "../../lib/format.ts"
-import { currentPushSubscription, disablePush, enablePush, pushSupported } from "../../lib/push.ts"
+import { currentPushSubscription } from "../../lib/push.ts"
 import { supabase } from "../../lib/supabase.ts"
 import type { LeaveBalance, LeaveEntryMode, LeaveLedgerEntry, LeaveRequest, LeaveType, Profile } from "../../types.ts"
 
@@ -39,7 +39,7 @@ function daysLabel(minutes: number): string {
 }
 
 export function LeaveAdminPage() {
-  const { organization, profile, refresh } = useAuth()
+  const { organization, refresh } = useAuth()
   const [members, setMembers] = useState<MemberLeave[]>([])
   const [entries, setEntries] = useState<LeaveLedgerEntry[]>([])
   const [requests, setRequests] = useState<LeaveRequest[]>([])
@@ -50,24 +50,12 @@ export function LeaveAdminPage() {
   const [digestWeekday, setDigestWeekday] = useState(organization?.leave_digest_weekday ?? 1)
   const [digestTime, setDigestTime] = useState(digestTimeValue(organization?.leave_digest_time))
   const [testingDigest, setTestingDigest] = useState(false)
-  const [pushOn, setPushOn] = useState(false)
-  const [pushBusy, setPushBusy] = useState(false)
 
   useEffect(() => {
     setMode(organization?.leave_entry_mode ?? "request")
     setDigestWeekday(organization?.leave_digest_weekday ?? 1)
     setDigestTime(digestTimeValue(organization?.leave_digest_time))
   }, [organization?.leave_entry_mode, organization?.leave_digest_weekday, organization?.leave_digest_time])
-
-  useEffect(() => {
-    let active = true
-    void currentPushSubscription().then((subscription) => {
-      if (active) setPushOn(Boolean(subscription))
-    })
-    return () => {
-      active = false
-    }
-  }, [])
 
   async function load() {
     const [profileResult, balanceResult, ledgerResult, requestResult] = await Promise.all([
@@ -224,41 +212,10 @@ export function LeaveAdminPage() {
     setMessage(`휴가 알림을 매주 ${label} ${time}에 보내도록 저장했습니다.`)
   }
 
-  async function turnPushOn() {
-    if (!profile?.id || !organization) return
-    setPushBusy(true)
-    setError(null)
-    setMessage(null)
-    try {
-      await enablePush(profile.id, organization.id)
-      setPushOn(true)
-      setMessage("이 기기의 알림을 켰습니다.")
-    } catch (caught) {
-      setError(humanError(caught))
-    } finally {
-      setPushBusy(false)
-    }
-  }
-
-  async function turnPushOff() {
-    if (!profile?.id) return
-    setPushBusy(true)
-    setError(null)
-    setMessage(null)
-    try {
-      await disablePush(profile.id)
-      setPushOn(false)
-      setMessage("이 기기의 알림을 껐습니다.")
-    } catch (caught) {
-      setError(humanError(caught))
-    } finally {
-      setPushBusy(false)
-    }
-  }
-
   async function sendDigestTest() {
-    if (!pushOn) {
-      setError("이 기기의 알림을 먼저 켜 주세요.")
+    const subscription = await currentPushSubscription()
+    if (!subscription) {
+      setError("상단의 알림 켜기를 먼저 눌러 주세요.")
       return
     }
     setTestingDigest(true)
@@ -344,10 +301,7 @@ export function LeaveAdminPage() {
               }}
             />
           </Field>
-          <Button type="button" disabled={pushBusy || !pushSupported()} onClick={() => void (pushOn ? turnPushOff() : turnPushOn())}>
-            {pushBusy ? "저장 중" : pushOn ? "알림 끄기" : "알림 켜기"}
-          </Button>
-          <Button type="button" variant="ghost" disabled={testingDigest || !pushOn} onClick={() => void sendDigestTest()}>
+          <Button type="button" variant="ghost" disabled={testingDigest} onClick={() => void sendDigestTest()}>
             {testingDigest ? "보내는 중" : "테스트 발송"}
           </Button>
         </div>
