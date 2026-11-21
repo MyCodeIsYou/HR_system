@@ -37,7 +37,7 @@ async function loadAccount(userId: string): Promise<{ profile: Profile | null; o
   if (!profile?.organization_id) return { profile, organization: null }
   const { data, error } = await supabase
     .from("organizations")
-    .select("id, name, leave_entry_mode, leave_digest_emails")
+    .select("id, name, leave_entry_mode, leave_digest_emails, leave_digest_weekday, leave_digest_time")
     .eq("id", profile.organization_id)
     .maybeSingle()
   if (error) throw new Error(error.message)

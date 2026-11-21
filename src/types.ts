@@ -28,6 +28,8 @@ export type Organization = {
   name: string
   leave_entry_mode: LeaveEntryMode
   leave_digest_emails: string[]
+  leave_digest_weekday: number
+  leave_digest_time: string
 }
 
 export type Workplace = {

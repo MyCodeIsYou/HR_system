@@ -141,3 +141,34 @@ export async function inviteMember(body: {
     throw new Error(String(data.error))
   }
 }
+
+export async function sendLeaveDigestTest(): Promise<void> {
+  const { data: sessionData } = await supabase.auth.getSession()
+  let accessToken = sessionData.session?.access_token ?? null
+  const expiresAt = sessionData.session?.expires_at ?? 0
+  if (!accessToken || expiresAt * 1000 < Date.now() + 60_000) {
+    const { data: refreshed } = await supabase.auth.refreshSession()
+    accessToken = refreshed.session?.access_token ?? accessToken
+  }
+  if (!accessToken) throw new Error("로그인이 필요합니다. 다시 로그인한 뒤 보내 주세요.")
+  const { data, error } = await supabase.functions.invoke("weekly-leave-digest", {
+    body: { test: true },
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  if (error) {
+    if (error instanceof FunctionsHttpError) {
+      try {
+        const payload = (await error.context.json()) as { error?: string }
+        if (payload.error) throw new Error(payload.error)
+      } catch (caught) {
+        if (caught instanceof Error && caught.message !== error.message) throw caught
+      }
+    }
+    throw new Error("테스트 메일을 보내지 못했습니다.")
+  }
+  const results = (data as { results?: { status: string }[] } | null)?.results ?? []
+  const status = results[0]?.status
+  if (status === "발송") return
+  if (status === "받을 주소 없음") throw new Error("받을 메일 주소를 먼저 추가하세요.")
+  throw new Error(status || "테스트 메일을 보내지 못했습니다.")
+}
