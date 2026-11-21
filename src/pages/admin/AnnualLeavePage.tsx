@@ -80,7 +80,7 @@ export function AnnualLeavePage() {
   return (
     <Page
       title="연차"
-      description="구성원별 기본 연차입니다. 연차 1일, 반차 0.5일, 반반차 0.25일입니다. 잔여는 이월과 그해 지급에서 사용을 뺀 값입니다."
+      description="구성원별 기본 연차입니다. 잔여는 이월과 그해 지급에서 사용을 뺀 값입니다."
     >
       {error ? <p className="mb-4 text-sm text-danger">{error}</p> : null}
       <div className="mb-3 w-28">

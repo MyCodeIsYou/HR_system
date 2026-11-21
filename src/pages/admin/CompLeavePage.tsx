@@ -49,7 +49,7 @@ export function CompLeavePage() {
   }, [])
 
   return (
-    <Page title="보상휴가" description="퇴근이 야근 인정 시각을 넘기면 보상휴가가 쌓입니다. 1일, 반차 0.5일, 반반차 0.25일입니다.">
+    <Page title="보상휴가" description="퇴근이 야근 인정 시각을 넘기면 보상휴가가 쌓입니다.">
       {error ? <p className="mb-4 text-sm text-danger">{humanError(new Error(error))}</p> : null}
       {balances.length === 0 ? <p className="text-xs text-muted">쌓인 보상휴가가 없습니다.</p> : null}
       {balances.length > 0 ? (

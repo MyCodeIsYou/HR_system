@@ -89,8 +89,8 @@ export function MembersPage() {
   async function onInvite(event: FormEvent) {
     event.preventDefault()
     const parsed = parseLeaveDays(invite.initial_annual_days)
-    if ("error" in parsed || parsed.minutes < 0) {
-      setError("error" in parsed ? parsed.error : "초기 연차는 0일 이상으로 입력하세요.")
+    if ("error" in parsed || parsed.minutes < 0 || parsed.minutes > 100 * 480) {
+      setError("error" in parsed ? parsed.error : "초기 연차는 0일에서 100일 사이로 입력하세요.")
       return
     }
     setPending(true)
@@ -220,7 +220,7 @@ export function MembersPage() {
             <Field compact label="입사일">
               <input type="date" value={invite.hired_at} onChange={(event) => setInvite({ ...invite, hired_at: event.target.value })} />
             </Field>
-            <Field compact label="초기 연차(일)" hint="연차 1, 반차 0.5, 반반차 0.25. 지급분은 휴가 원장에 남습니다.">
+            <Field compact label="초기 연차(일)" hint="일 수를 자유롭게 입력합니다. 지급분은 휴가 원장에 남습니다.">
               <input
                 inputMode="decimal"
                 value={invite.initial_annual_days}
@@ -297,13 +297,13 @@ export function MembersPage() {
             <Field compact label="입사일">
               <input type="date" value={edit.hired_at} onChange={(event) => setEdit({ ...edit, hired_at: event.target.value })} />
             </Field>
-            <Field compact label="연차" hint="1, 0.5, 0.25">
+            <Field compact label="연차" hint="일 수를 자유롭게 입력합니다.">
               <input inputMode="decimal" value={leaveDays.annual} onChange={(event) => setLeaveDays({ ...leaveDays, annual: event.target.value })} required />
             </Field>
-            <Field compact label="보상휴가" hint="1, 0.5, 0.25">
+            <Field compact label="보상휴가" hint="일 수를 자유롭게 입력합니다.">
               <input inputMode="decimal" value={leaveDays.comp} onChange={(event) => setLeaveDays({ ...leaveDays, comp: event.target.value })} required />
             </Field>
-            <Field compact label="여름휴가" hint="1, 0.5, 0.25">
+            <Field compact label="여름휴가" hint="일 수를 자유롭게 입력합니다.">
               <input inputMode="decimal" value={leaveDays.summer} onChange={(event) => setLeaveDays({ ...leaveDays, summer: event.target.value })} required />
             </Field>
             <div className="flex items-end">

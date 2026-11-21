@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { useAuth } from "../auth/AuthContext.tsx"
 import { Alert, Button, Field, Page } from "../components/ui.tsx"
 import { cancelLeaveRequest, requestLeave } from "../lib/api.ts"
-import { deductLabel, formatLeaveDays, humanError, seoulToday } from "../lib/format.ts"
+import { formatLeaveDays, humanError, seoulToday } from "../lib/format.ts"
 import { supabase } from "../lib/supabase.ts"
 import type { LeaveBalance, LeaveKind, LeaveRequest, LeaveType } from "../types.ts"
 
@@ -230,10 +230,11 @@ export function LeaveRequestPage() {
   const dayRequests = requests.filter((request) => request.work_date === selected)
   const myRequest = dayRequests.find((request) => request.user_id === profile?.id) ?? null
   const selectedKind = kinds.find((kind) => kind.id === kindId) ?? null
+  const poolMinutes = balanceOf(balances, "annual") + balanceOf(balances, "comp") + balanceOf(balances, "summer")
   const held = requests
-    .filter((request) => request.user_id === profile?.id && request.status === "pending" && selectedKind?.deduct_type && request.leave_type === selectedKind.deduct_type)
+    .filter((request) => request.user_id === profile?.id && request.status === "pending" && request.leave_type)
     .reduce((sum, request) => sum + request.minutes, 0)
-  const available = selectedKind?.deduct_type ? balanceOf(balances, selectedKind.deduct_type) - held : 0
+  const available = selectedKind?.deduct_type ? poolMinutes - held : 0
 
   async function submit() {
     if (!selected) return
@@ -441,7 +442,7 @@ export function LeaveRequestPage() {
                         label="종류"
                         hint={
                           selectedKind?.deduct_type
-                            ? `${deductLabel(selectedKind.deduct_type)} ${formatLeaveDays(selectedKind.minutes)} · ${registerMode ? "등록" : "신청"} 가능 ${formatLeaveDays(Math.max(available, 0))}`
+                            ? `${formatLeaveDays(selectedKind.minutes)} · 연차·보상·여름 합계 ${formatLeaveDays(Math.max(available, 0))}`
                             : `${formatLeaveDays(selectedKind?.minutes ?? 0)} · 남은 휴가에서 빠지지 않습니다.`
                         }
                       >

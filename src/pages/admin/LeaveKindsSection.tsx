@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { useAuth } from "../../auth/AuthContext.tsx"
 import { Alert, Button, Field, Modal } from "../../components/ui.tsx"
-import { deductLabel, formatLeaveDays, humanError, parseLeaveDays } from "../../lib/format.ts"
+import { deductLabel, formatLeaveDays, humanError, leaveDayValue, parseLeaveDays } from "../../lib/format.ts"
 import { supabase } from "../../lib/supabase.ts"
 import type { LeaveKind, LeaveType } from "../../types.ts"
 
@@ -52,7 +52,7 @@ export function LeaveKindsSection() {
     setDraft({
       id: kind.id,
       name: kind.name,
-      days: String(kind.minutes / 480),
+      days: leaveDayValue(kind.minutes),
       deduct: kind.deduct_type ?? "",
       enabled: kind.enabled,
     })
@@ -71,7 +71,7 @@ export function LeaveKindsSection() {
       return
     }
     if (parsed.minutes <= 0 || parsed.minutes > 14400) {
-      setError("일수는 0.25일부터 30일까지 입력하세요.")
+      setError("일수는 0일보다 크고 30일까지 입력하세요.")
       return
     }
     setPending(true)
@@ -186,7 +186,7 @@ export function LeaveKindsSection() {
             <Field compact label="이름">
               <input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} placeholder="경조사휴가" />
             </Field>
-            <Field compact label="일수" hint="1일, 0.5일, 0.25일 단위">
+            <Field compact label="일수" hint="30일까지 자유롭게 입력합니다.">
               <input value={draft.days} onChange={(event) => setDraft({ ...draft, days: event.target.value })} inputMode="decimal" />
             </Field>
             <Field compact label="차감">

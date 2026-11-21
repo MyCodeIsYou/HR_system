@@ -110,20 +110,19 @@ export function formatLeaveDays(minutes: number): string {
 }
 
 export function leaveDayValue(minutes: number): string {
-  const days = Math.round((minutes / 480) * 100) / 100
-  const sign = days < 0 ? "-" : ""
-  const text = Math.abs(days).toFixed(2).replace(/0+$/, "").replace(/\.$/, "")
+  const sign = minutes < 0 ? "-" : ""
+  const text = (Math.abs(minutes) / 480).toFixed(3).replace(/0+$/, "").replace(/\.$/, "")
   return `${sign}${text}`
 }
 
 export function parseLeaveDays(value: string): { minutes: number } | { error: string } {
-  const days = Number(value)
+  const trimmed = value.trim()
+  if (!trimmed) return { error: "일수는 숫자로 입력하세요." }
+  const days = Number(trimmed)
   if (!Number.isFinite(days)) return { error: "일수는 숫자로 입력하세요." }
-  const quarters = days * 4
-  if (Math.abs(quarters - Math.round(quarters)) > 1e-6) {
-    return { error: "연차는 1일, 반차는 0.5일, 반반차는 0.25일 단위로 입력하세요." }
-  }
-  return { minutes: Math.round(quarters) * 120 }
+  const minutes = daysToMinutes(days)
+  if (!Number.isSafeInteger(minutes)) return { error: "일수가 너무 큽니다." }
+  return { minutes }
 }
 
 const policyLabel: Record<LatePolicy, string> = {

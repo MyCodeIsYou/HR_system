@@ -221,7 +221,7 @@ export function LeaveAdminPage() {
   return (
     <Page
       title="휴가"
-      description="표의 일수를 고치고 칸 밖을 누르거나 Enter를 치면 저장됩니다. 연차 1일, 반차 0.5일, 반반차 0.25일입니다."
+      description="표의 일수를 고치고 칸 밖을 누르거나 Enter를 치면 저장됩니다."
     >
       {error ? (
         <div className="mb-4">
