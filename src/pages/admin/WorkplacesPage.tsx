@@ -4,7 +4,7 @@ import { useAuth } from "../../auth/AuthContext.tsx"
 import { Alert, Button, Empty, Field, Modal, Page } from "../../components/ui.tsx"
 import { workplaceToken } from "../../lib/api.ts"
 import { nfcCheckinUrl } from "../../lib/checkinLink.ts"
-import { clockLabel, formatWon, humanError, latePolicyLabel } from "../../lib/format.ts"
+import { clockLabel, formatWon, humanError, latePolicyLabel, lunchRange } from "../../lib/format.ts"
 import { supabase } from "../../lib/supabase.ts"
 import { workplaceColumns, type Workplace } from "../../types.ts"
 
@@ -142,7 +142,10 @@ export function WorkplacesPage() {
                     </Link>
                   </td>
                   <td>{workplace.address || "주소 없음"}</td>
-                  <td className="tabular-nums">{clockLabel(workplace.work_start)}–{clockLabel(workplace.work_end)}</td>
+                  <td className="tabular-nums">
+                    <span className="block">{clockLabel(workplace.work_start)}–{clockLabel(workplace.work_end)}</span>
+                    <span className="block text-xs text-muted">점심 {lunchRange(workplace.lunch_start, workplace.lunch_minutes)}</span>
+                  </td>
                   <td>{latePolicyLabel(workplace.late_policy)}</td>
                   <td>
                     <button type="button" className="ds-icon-button is-sm" aria-label="상세" onClick={() => setDetail(workplace)}>
@@ -205,6 +208,7 @@ function WorkplaceDetail({
         </div>
         <Fact label="시간대" value={workplace.timezone} />
         <Fact label="근무" value={`${clockLabel(workplace.work_start)}–${clockLabel(workplace.work_end)}`} />
+        <Fact label="점심" value={lunchRange(workplace.lunch_start, workplace.lunch_minutes)} />
         <Fact label="지각 유예" value={`${workplace.late_grace_minutes}분`} />
         <Fact label="지각 제재" value={sanctionLabel(workplace)} />
         <Fact label="야근 인정" value={`${clockLabel(workplace.overtime_start)} 이후`} />

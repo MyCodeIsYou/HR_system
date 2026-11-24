@@ -26,6 +26,21 @@ export function clockLabel(value: string): string {
   return value.slice(0, 5)
 }
 
+export function minutesOfDay(value: string): number {
+  const [hour, minute] = clockLabel(value).split(":").map(Number)
+  return hour * 60 + minute
+}
+
+export function lunchEnd(start: string, minutes: number): string {
+  const total = minutesOfDay(start) + minutes
+  return `${String(Math.floor(total / 60) % 24).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`
+}
+
+export function lunchRange(start: string, minutes: number): string {
+  if (minutes <= 0) return "없음"
+  return `${clockLabel(start)}–${lunchEnd(start, minutes)}`
+}
+
 export function seoulToday(date = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Seoul",

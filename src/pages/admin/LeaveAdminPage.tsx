@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { useAuth } from "../../auth/AuthContext.tsx"
 import { Alert, Button, Field, Page, Toast } from "../../components/ui.tsx"
 import { LeaveKindsSection } from "./LeaveKindsSection.tsx"
-import { adjustLeave, reviewLeaveRequest, sendLeaveDigestTest } from "../../lib/api.ts"
+import { adjustLeave, reviewLeaveRequest, sendLeaveDigestTest, sendUserPush } from "../../lib/api.ts"
 import { formatDate, formatDateTime, formatLeaveDays, humanError, leaveDayValue, leaveTypeLabel, oneName, parseLeaveDays } from "../../lib/format.ts"
 import { currentPushSubscription } from "../../lib/push.ts"
 import { supabase } from "../../lib/supabase.ts"
@@ -50,6 +50,11 @@ export function LeaveAdminPage() {
   const [digestWeekday, setDigestWeekday] = useState(organization?.leave_digest_weekday ?? 1)
   const [digestTime, setDigestTime] = useState(digestTimeValue(organization?.leave_digest_time))
   const [testingDigest, setTestingDigest] = useState(false)
+  const [readyIds, setReadyIds] = useState<string[]>([])
+  const [pushTargets, setPushTargets] = useState<string[]>([])
+  const [pushTitle, setPushTitle] = useState("")
+  const [pushBody, setPushBody] = useState("")
+  const [sendingPush, setSendingPush] = useState(false)
 
   useEffect(() => {
     setMode(organization?.leave_entry_mode ?? "request")
@@ -58,7 +63,7 @@ export function LeaveAdminPage() {
   }, [organization?.leave_entry_mode, organization?.leave_digest_weekday, organization?.leave_digest_time])
 
   async function load() {
-    const [profileResult, balanceResult, ledgerResult, requestResult] = await Promise.all([
+    const [profileResult, balanceResult, ledgerResult, requestResult, readyResult] = await Promise.all([
       supabase.from("profiles").select("id, name, role").order("name"),
       supabase.from("leave_balance_sums").select("user_id, leave_type, balance_minutes"),
       supabase
@@ -71,11 +76,14 @@ export function LeaveAdminPage() {
         .select("id, user_id, leave_type, kind_name, work_date, minutes, status, note, subject:profiles!leave_requests_user_id_fkey(name)")
         .eq("status", "pending")
         .order("work_date"),
+      supabase.rpc("push_subscriber_ids"),
     ])
     if (profileResult.error) throw profileResult.error
     if (balanceResult.error) throw balanceResult.error
     if (ledgerResult.error) throw ledgerResult.error
     if (requestResult.error) throw requestResult.error
+    if (readyResult.error) throw readyResult.error
+    setReadyIds(((readyResult.data ?? []) as { user_id: string }[]).map((row) => row.user_id))
     const balances = (balanceResult.data ?? []) as LeaveBalance[]
     setMembers(
       ((profileResult.data ?? []) as Pick<Profile, "id" | "name" | "role">[]).map((member) => {
@@ -231,6 +239,46 @@ export function LeaveAdminPage() {
     }
   }
 
+  function togglePushTarget(id: string) {
+    setPushTargets((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]))
+  }
+
+  function selectReadyMembers() {
+    if (readyIds.length === 0) {
+      setError("알림을 켠 구성원이 없습니다.")
+      return
+    }
+    setError(null)
+    const allReady = readyIds.every((id) => pushTargets.includes(id))
+    setPushTargets(allReady ? pushTargets.filter((id) => !readyIds.includes(id)) : [...new Set([...pushTargets, ...readyIds])])
+  }
+
+  async function sendSelectedPush() {
+    const title = pushTitle.trim()
+    const body = pushBody.trim()
+    if (pushTargets.length === 0) {
+      setError("받을 사람을 선택해 주세요.")
+      return
+    }
+    if (!title || !body) {
+      setError("제목과 내용을 입력해 주세요.")
+      return
+    }
+    setSendingPush(true)
+    setError(null)
+    setMessage(null)
+    try {
+      const result = await sendUserPush(pushTargets, title, body)
+      const skipped = result.skipped.length > 0 ? ` 알림이 꺼진 사람: ${result.skipped.join(", ")}` : ""
+      setMessage(`${result.sent}명에게 알림을 보냈습니다.${skipped}`)
+      setPushTargets([])
+    } catch (caught) {
+      setError(humanError(caught))
+    } finally {
+      setSendingPush(false)
+    }
+  }
+
   async function review(id: string, approve: boolean) {
     setSavingKey(id)
     setError(null)
@@ -306,8 +354,60 @@ export function LeaveAdminPage() {
           </Button>
         </div>
         <p className="text-xs text-muted">
-          {`매주 ${digestWeekdays.find((item) => item.value === digestWeekday)?.label ?? "월요일"} ${digestTime}에, 알림을 켠 기기로 이번 주 휴가 일정을 보냅니다. 아이폰은 홈 화면에 추가한 앱에서 알림을 켜 주세요.`}
+          {`매주 ${digestWeekdays.find((item) => item.value === digestWeekday)?.label ?? "월요일"} ${digestTime}에 그 주 휴가를 알림으로 보냅니다. 알림은 알림을 켠 기기로 갑니다.`}
         </p>
+        <div className="mt-4 grid gap-3">
+          <Field compact label="제목">
+            <input
+              aria-label="알림 제목"
+              value={pushTitle}
+              maxLength={40}
+              onChange={(event) => setPushTitle(event.target.value)}
+            />
+          </Field>
+          <Field compact label="내용">
+            <textarea
+              aria-label="알림 내용"
+              value={pushBody}
+              maxLength={180}
+              rows={3}
+              onChange={(event) => setPushBody(event.target.value)}
+            />
+          </Field>
+        </div>
+        <div className="mt-4 mb-2 flex items-center justify-between gap-3">
+          <p className="text-xs font-medium text-muted">받는 사람</p>
+          <Button type="button" variant="ghost" onClick={selectReadyMembers}>
+            알림 켠 사람
+          </Button>
+        </div>
+        <ul className="grid gap-2">
+          {members.map((member) => (
+            <li key={member.id}>
+              <label className="flex items-center justify-between gap-3 border border-line px-3 py-2 text-sm" style={{ borderRadius: 4 }}>
+                <span className="flex min-w-0 items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={pushTargets.includes(member.id)}
+                    aria-label={`${member.name}에게 알림`}
+                    style={{ width: "1rem", height: "1rem" }}
+                    onChange={() => togglePushTarget(member.id)}
+                  />
+                  <span className="truncate">
+                    {member.name}
+                    {member.role === "admin" ? " · 관리자" : ""}
+                  </span>
+                </span>
+                <span className="shrink-0 text-xs text-muted">{readyIds.includes(member.id) ? "알림 켜짐" : "알림 꺼짐"}</span>
+              </label>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-3">
+          <Button type="button" disabled={sendingPush} onClick={() => void sendSelectedPush()}>
+            {sendingPush ? "보내는 중" : "선택 발송"}
+          </Button>
+        </div>
       </div>
       <LeaveKindsSection />
       {mode === "request" || requests.length > 0 ? <h2 className="mb-2 text-sm font-semibold">휴가 신청</h2> : null}

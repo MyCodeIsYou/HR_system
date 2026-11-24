@@ -142,7 +142,7 @@ export async function inviteMember(body: {
   }
 }
 
-export async function sendLeaveDigestTest(): Promise<void> {
+async function invokeLeaveDigest(body: { test?: boolean }, failure: string): Promise<void> {
   const { data: sessionData } = await supabase.auth.getSession()
   let accessToken = sessionData.session?.access_token ?? null
   const expiresAt = sessionData.session?.expires_at ?? 0
@@ -152,7 +152,7 @@ export async function sendLeaveDigestTest(): Promise<void> {
   }
   if (!accessToken) throw new Error("로그인이 필요합니다. 다시 로그인한 뒤 보내 주세요.")
   const { data, error } = await supabase.functions.invoke("weekly-leave-digest", {
-    body: { test: true },
+    body,
     headers: { Authorization: `Bearer ${accessToken}` },
   })
   if (error) {
@@ -164,10 +164,43 @@ export async function sendLeaveDigestTest(): Promise<void> {
         if (caught instanceof Error && caught.message !== error.message) throw caught
       }
     }
-    throw new Error("테스트 알림을 보내지 못했습니다.")
+    throw new Error(failure)
   }
   const results = (data as { results?: { status: string }[] } | null)?.results ?? []
   const status = results[0]?.status
   if (status === "발송") return
-  throw new Error(status || "테스트 알림을 보내지 못했습니다.")
+  throw new Error(status || failure)
+}
+
+export async function sendLeaveDigestTest(): Promise<void> {
+  await invokeLeaveDigest({ test: true }, "테스트 알림을 보내지 못했습니다.")
+}
+
+export async function sendUserPush(userIds: string[], title: string, body: string): Promise<{ sent: number; skipped: string[] }> {
+  const { data: sessionData } = await supabase.auth.getSession()
+  let accessToken = sessionData.session?.access_token ?? null
+  const expiresAt = sessionData.session?.expires_at ?? 0
+  if (!accessToken || expiresAt * 1000 < Date.now() + 60_000) {
+    const { data: refreshed } = await supabase.auth.refreshSession()
+    accessToken = refreshed.session?.access_token ?? accessToken
+  }
+  if (!accessToken) throw new Error("로그인이 필요합니다. 다시 로그인한 뒤 보내 주세요.")
+  const { data, error } = await supabase.functions.invoke("send-user-push", {
+    body: { user_ids: userIds, title, body },
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  if (error) {
+    if (error instanceof FunctionsHttpError) {
+      try {
+        const payload = (await error.context.json()) as { error?: string }
+        if (payload.error) throw new Error(payload.error)
+      } catch (caught) {
+        if (caught instanceof Error && caught.message !== error.message) throw caught
+      }
+    }
+    throw new Error("알림을 보내지 못했습니다.")
+  }
+  const result = data as { error?: string; sent?: number; skipped?: string[] } | null
+  if (result?.error) throw new Error(result.error)
+  return { sent: result?.sent ?? 0, skipped: result?.skipped ?? [] }
 }

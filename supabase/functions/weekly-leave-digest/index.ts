@@ -19,7 +19,6 @@ type LeaveRow = {
 type OrgRow = {
   id: string
   name: string
-  leave_digest_emails: string[] | null
   leave_digest_weekday: number | null
   leave_digest_time: string | null
 }
@@ -122,6 +121,7 @@ Deno.serve(async (req) => {
   if (!supabaseUrl || !serviceKey) return json({ error: "서버 설정이 없습니다." }, 500)
   const admin = createClient(supabaseUrl, serviceKey)
 
+  await req.json().catch(() => ({}))
   const expected = Deno.env.get("WEEKLY_LEAVE_SECRET") ?? ""
   const provided = req.headers.get("x-cron-secret") ?? ""
   const cron = Boolean(expected) && provided === expected
@@ -138,14 +138,16 @@ Deno.serve(async (req) => {
       .eq("id", userData.user.id)
       .maybeSingle()
     if (profileError) return json({ error: profileError.message }, 500)
-    if (profile?.role !== "admin" || !profile.organization_id) return json({ error: "관리자만 테스트 알림을 보낼 수 있습니다." }, 403)
+    if (profile?.role !== "admin" || !profile.organization_id) {
+      return json({ error: "관리자만 테스트 알림을 보낼 수 있습니다." }, 403)
+    }
     testOrgId = profile.organization_id
     testUserId = userData.user.id
   }
 
   const { start, end } = thisWeek()
   const [orgResult, leaveResult, sentResult, subscriptionResult] = await Promise.all([
-    admin.from("organizations").select("id, name, leave_digest_emails, leave_digest_weekday, leave_digest_time"),
+    admin.from("organizations").select("id, name, leave_digest_weekday, leave_digest_time"),
     admin
       .from("leave_requests")
       .select("organization_id, work_date, minutes, status, kind_name, leave_type, profile:profiles!leave_requests_user_id_fkey(name)")
@@ -166,7 +168,7 @@ Deno.serve(async (req) => {
 
   for (const org of (orgResult.data ?? []) as OrgRow[]) {
     if (testOrgId && org.id !== testOrgId) continue
-    const testing = testOrgId === org.id
+    const testing = Boolean(testOrgId)
     if (!testing && sentIds.has(org.id)) {
       results.push({ organization: org.name, recipients: 0, status: "이미 발송" })
       continue
@@ -176,37 +178,49 @@ Deno.serve(async (req) => {
       continue
     }
     const targets = subscriptions.filter((row) => row.organization_id === org.id && (!testing || row.user_id === testUserId))
-    if (targets.length === 0) {
-      results.push({ organization: org.name, recipients: 0, status: "알림을 켠 기기가 없습니다." })
+    if (!testing && targets.length === 0) {
+      results.push({ organization: org.name, recipients: 0, status: "받을 곳이 없습니다." })
       continue
     }
     const rows = ((leaveResult.data ?? []) as LeaveRow[]).filter((row) => row.organization_id === org.id)
-    try {
-      const delivered = await sendPush(targets, {
-        title: testing ? "휴가 알림 테스트" : "이번 주 휴가",
-        body: testing ? "알림이 이 기기로 도착했습니다." : pushBody(rows),
-        url: "admin/leaves",
-      })
-      if (delivered.gone.length > 0) {
-        await admin.from("push_subscriptions").delete().in("endpoint", delivered.gone)
-      }
-      if (delivered.sent === 0) throw new Error(delivered.errors[0] ?? "푸시를 보내지 못했습니다.")
-      if (!testing) {
-        const { error: saveError } = await admin.from("leave_digest_sends").upsert({
-          organization_id: org.id,
-          week_start: start,
-          sent_at: new Date().toISOString(),
-          recipient_count: delivered.sent,
+    let pushSent = 0
+    let pushError = ""
+    if (targets.length > 0) {
+      try {
+        const delivered = await sendPush(targets, {
+          title: testing ? "휴가 알림 테스트" : `${dayText(start)} 휴가`,
+          body: testing ? "알림이 이 기기로 도착했습니다." : pushBody(rows),
+          url: "admin/leaves",
         })
-        if (saveError) throw new Error(saveError.message)
+        if (delivered.gone.length > 0) {
+          await admin.from("push_subscriptions").delete().in("endpoint", delivered.gone)
+        }
+        if (delivered.sent === 0) throw new Error(delivered.errors[0] ?? "푸시를 보내지 못했습니다.")
+        pushSent = delivered.sent
+      } catch (caught) {
+        pushError = caught instanceof Error ? caught.message : "푸시를 보내지 못했습니다."
       }
-      results.push({ organization: org.name, recipients: delivered.sent, status: "발송" })
-    } catch (caught) {
-      const message = caught instanceof Error ? caught.message : "푸시를 보내지 못했습니다."
-      results.push({ organization: org.name, recipients: 0, status: message })
     }
+    if (!testing && pushSent > 0) {
+      const { error: saveError } = await admin.from("leave_digest_sends").upsert({
+        organization_id: org.id,
+        week_start: start,
+        sent_at: new Date().toISOString(),
+        recipient_count: pushSent,
+      })
+      if (saveError) {
+        results.push({ organization: org.name, recipients: pushSent, status: saveError.message })
+        continue
+      }
+    }
+    let status = "발송"
+    if (pushSent === 0) {
+      status = targets.length === 0 ? (testing ? "알림을 켠 기기가 없습니다." : "받을 곳이 없습니다.") : pushError || "푸시를 보내지 못했습니다."
+    }
+    results.push({ organization: org.name, recipients: pushSent, status })
   }
 
-  const failed = results.some((row) => !["발송", "이미 발송", "시각 전", "알림을 켠 기기가 없습니다."].includes(row.status))
+  const quiet = ["발송", "이미 발송", "시각 전", "받을 곳이 없습니다."]
+  const failed = results.some((row) => !quiet.includes(row.status))
   return json({ week_start: start, week_end: end, results }, failed ? 500 : 200)
 })

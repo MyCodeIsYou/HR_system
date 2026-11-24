@@ -54,3 +54,6 @@ verify_jwt = false
 
 [functions.leave-eve-push]
 verify_jwt = false
+
+[functions.send-user-push]
+verify_jwt = false

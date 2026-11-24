@@ -40,6 +40,8 @@ export type Workplace = {
   timezone: string
   work_start: string
   work_end: string
+  lunch_start: string
+  lunch_minutes: number
   late_grace_minutes: number
   late_policy: LatePolicy
   fine_mode: FineMode
@@ -185,4 +187,4 @@ export type SupportTicketPage = {
 }
 
 export const workplaceColumns =
-  "id, organization_id, name, address, timezone, work_start, work_end, late_grace_minutes, late_policy, fine_mode, fine_amount, fine_initial_minutes, fine_initial_amount, fine_step_minutes, fine_step_amount, leave_deduction_mode, leave_deduction_minutes, overtime_start, comp_leave_ratio_overtime_minutes, comp_leave_ratio_leave_minutes, created_at, updated_at"
+  "id, organization_id, name, address, timezone, work_start, work_end, lunch_start, lunch_minutes, late_grace_minutes, late_policy, fine_mode, fine_amount, fine_initial_minutes, fine_initial_amount, fine_step_minutes, fine_step_amount, leave_deduction_mode, leave_deduction_minutes, overtime_start, comp_leave_ratio_overtime_minutes, comp_leave_ratio_leave_minutes, created_at, updated_at"

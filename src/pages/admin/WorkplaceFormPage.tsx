@@ -4,7 +4,7 @@ import { useAuth } from "../../auth/AuthContext.tsx"
 import { Alert, Button, Card, Field, Notice, Page } from "../../components/ui.tsx"
 import { rotateWorkplaceToken, workplaceToken } from "../../lib/api.ts"
 import { nfcCheckinUrl } from "../../lib/checkinLink.ts"
-import { clockLabel, humanError } from "../../lib/format.ts"
+import { clockLabel, humanError, lunchEnd, minutesOfDay } from "../../lib/format.ts"
 import { supabase } from "../../lib/supabase.ts"
 import type { FineMode, LatePolicy, LeaveDeductionMode, Workplace } from "../../types.ts"
 import { workplaceColumns } from "../../types.ts"
@@ -15,6 +15,8 @@ type Draft = {
   timezone: string
   work_start: string
   work_end: string
+  lunch_start: string
+  lunch_end: string
   late_grace_minutes: string
   late_policy: LatePolicy
   fine_mode: FineMode
@@ -36,6 +38,8 @@ const emptyDraft: Draft = {
   timezone: "Asia/Seoul",
   work_start: "09:00",
   work_end: "18:00",
+  lunch_start: "12:00",
+  lunch_end: "13:00",
   late_grace_minutes: "0",
   late_policy: "none",
   fine_mode: "flat",
@@ -58,6 +62,8 @@ function fromWorkplace(workplace: Workplace): Draft {
     timezone: workplace.timezone,
     work_start: clockLabel(workplace.work_start),
     work_end: clockLabel(workplace.work_end),
+    lunch_start: clockLabel(workplace.lunch_start),
+    lunch_end: lunchEnd(workplace.lunch_start, workplace.lunch_minutes),
     late_grace_minutes: String(workplace.late_grace_minutes),
     late_policy: workplace.late_policy,
     fine_mode: workplace.fine_mode,
@@ -72,6 +78,13 @@ function fromWorkplace(workplace: Workplace): Draft {
     comp_leave_ratio_overtime_minutes: String(workplace.comp_leave_ratio_overtime_minutes),
     comp_leave_ratio_leave_minutes: String(workplace.comp_leave_ratio_leave_minutes),
   }
+}
+
+function lunchMinutes(start: string, end: string): number {
+  const minutes = minutesOfDay(end) - minutesOfDay(start)
+  if (minutes < 0) throw new Error("점심 종료는 시작보다 뒤여야 합니다.")
+  if (minutes > 240) throw new Error("점심 시간은 240분까지입니다.")
+  return minutes
 }
 
 function integer(value: string, label: string, min: number): number {
@@ -136,6 +149,8 @@ export function WorkplaceFormPage() {
         timezone: draft.timezone.trim(),
         work_start: draft.work_start,
         work_end: draft.work_end,
+        lunch_start: draft.lunch_start,
+        lunch_minutes: lunchMinutes(draft.lunch_start, draft.lunch_end),
         late_grace_minutes: integer(draft.late_grace_minutes, "지각 유예", 0),
         late_policy: draft.late_policy,
         fine_mode: draft.fine_mode,
@@ -199,7 +214,7 @@ export function WorkplaceFormPage() {
   return (
     <Page
       title={workplaceId ? "사업장 수정" : "사업장 추가"}
-      description="지각은 유예를 넘긴 뒤 기준 출근 시각부터 분을 올립니다. 대기 중이거나 승인된 오전반차·오전반반차가 있으면 그날 출근 기준이 휴가 시간만큼 늦어집니다. 야근은 출근 시각과 야근 인정 시작 중 늦은 쪽부터 퇴근까지이며, 비율을 곱해 분 단위로 반올림합니다."
+      description="지각은 유예를 넘긴 뒤 기준 출근 시각부터 분을 올립니다. 대기 중이거나 승인된 오전반차·오전반반차가 있으면 그날 출근 기준이 휴가 시간만큼 늦어지고, 그 시각이 점심 시작 이후면 점심 시간을 더합니다. 야근은 출근 시각과 야근 인정 시작 중 늦은 쪽부터 퇴근까지이며, 비율을 곱해 분 단위로 반올림합니다."
       action={
         <Link to="/admin/workplaces" className="text-sm text-muted underline-offset-4 hover:underline">
           목록
@@ -222,6 +237,12 @@ export function WorkplaceFormPage() {
           </Field>
           <Field label="기준 퇴근" hint="그날 자정까지 퇴근이 없으면 이 시각으로 퇴근 처리합니다.">
             <input type="time" value={draft.work_end} onChange={(event) => patch("work_end", event.target.value)} required />
+          </Field>
+          <Field label="점심 시작" hint="사업장마다 여기서 점심 시간을 관리합니다.">
+            <input type="time" value={draft.lunch_start} onChange={(event) => patch("lunch_start", event.target.value)} required />
+          </Field>
+          <Field label="점심 종료" hint="오전반차 기준이 점심 시작 이후면 이 구간만큼 출근이 더 늦어집니다. 시작과 종료가 같으면 점심을 더하지 않습니다.">
+            <input type="time" value={draft.lunch_end} onChange={(event) => patch("lunch_end", event.target.value)} required />
           </Field>
           <Field label="지각 유예(분)">
             <input inputMode="numeric" value={draft.late_grace_minutes} onChange={(event) => patch("late_grace_minutes", event.target.value)} required />
